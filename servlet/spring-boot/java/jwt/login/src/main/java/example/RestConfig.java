@@ -16,7 +16,14 @@
 
 package example;
 
+import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.util.function.Supplier;
+
+import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.jwk.RSAKey;
+import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
+import com.nimbusds.jose.proc.SecurityContext;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -26,9 +33,13 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.config.annotation.web.configurers.oauth2.server.resource.OAuth2ResourceServerConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.oauth2.jwt.JwsSignerFactory;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.NimbusJwsSignerFactory;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthenticationEntryPoint;
 import org.springframework.security.oauth2.server.resource.web.access.BearerTokenAccessDeniedHandler;
@@ -45,11 +56,14 @@ public class RestConfig extends WebSecurityConfigurerAdapter {
 	@Value("${jwt.public.key}")
 	RSAPublicKey key;
 
+	@Value("${jwt.private.key}")
+	RSAPrivateKey privateKey;
+
 	@Override
 	protected void configure(HttpSecurity http) throws Exception {
 		// @formatter:off
 		http.authorizeRequests((authz) -> authz.anyRequest().authenticated())
-			.csrf((csrf) -> csrf.ignoringAntMatchers("/token"))
+			.csrf((csrf) -> csrf.ignoringAntMatchers("/token/**"))
 			.httpBasic(Customizer.withDefaults())
 			.oauth2ResourceServer(OAuth2ResourceServerConfigurer::jwt)
 			.sessionManagement((session) -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -75,6 +89,22 @@ public class RestConfig extends WebSecurityConfigurerAdapter {
 	@Bean
 	JwtDecoder jwtDecoder() {
 		return NimbusJwtDecoder.withPublicKey(this.key).build();
+	}
+
+	@Bean
+	Supplier<Authentication> currentAuthentication() {
+		return () -> SecurityContextHolder.getContext().getAuthentication();
+	}
+
+	@Bean
+	JwsSignerFactory jwtSignerFactory(Supplier<Authentication> currentAuthentication) {
+		RSAKey key = new RSAKey.Builder(this.key).privateKey(this.privateKey).build();
+		JwsSignerFactory delegate = new NimbusJwsSignerFactory(new ImmutableJWKSet<>(new JWKSet(key)));
+
+		// What's nice here is that I can easily set application-level defaults
+		// while still allowing request-specific overrides (see TokenController for an
+		// example)
+		return () -> delegate.signer().subject(currentAuthentication.get().getName());
 	}
 
 }

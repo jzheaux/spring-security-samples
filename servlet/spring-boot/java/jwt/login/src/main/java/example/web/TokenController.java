@@ -16,21 +16,17 @@
 
 package example.web;
 
-import java.security.interfaces.RSAPrivateKey;
-import java.time.Instant;
-import java.util.Date;
 import java.util.stream.Collectors;
 
-import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.crypto.RSASSASigner;
-import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.SignedJWT;
-
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.oauth2.jwt.JwsSignerFactory;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -41,38 +37,27 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class TokenController {
 
-	@Value("${jwt.private.key}")
-	RSAPrivateKey key;
+	@Autowired
+	JwsSignerFactory signerFactory;
 
 	@PostMapping("/token")
 	public String token(Authentication authentication) {
-		Instant now = Instant.now();
-		long expiry = 36000L;
-		// @formatter:off
-		String scope = authentication.getAuthorities().stream()
-				.map(GrantedAuthority::getAuthority)
+		String scope = authentication.getAuthorities().stream().map(GrantedAuthority::getAuthority)
 				.collect(Collectors.joining(" "));
-		JWTClaimsSet claims = new JWTClaimsSet.Builder()
-				.issuer("self")
-				.issueTime(new Date(now.toEpochMilli()))
-				.expirationTime(new Date(now.plusSeconds(expiry).toEpochMilli()))
-				.subject(authentication.getName())
-				.claim("scope", scope)
-				.build();
-		// @formatter:on
-		JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.RS256).build();
-		SignedJWT jwt = new SignedJWT(header, claims);
-		return sign(jwt).serialize();
+		return this.signerFactory.signer().issuer("self").claim("scope", scope).sign().getTokenValue();
 	}
 
-	SignedJWT sign(SignedJWT jwt) {
-		try {
-			jwt.sign(new RSASSASigner(this.key));
-			return jwt;
+	@PostMapping("/token/{for}")
+	public String tokenFor(@PathVariable("for") String user,
+			@RequestParam(name = "scope", required = false) String scope) {
+		Jwt.JwsSpec<?> spec = this.signerFactory.signer().issuer("self")
+				// here, I override the subject that the application is defaulting to the
+				// currently logged-in user
+				.subject(user);
+		if (StringUtils.hasText(scope)) {
+			spec.claim("scope", scope);
 		}
-		catch (Exception ex) {
-			throw new IllegalArgumentException(ex);
-		}
+		return spec.sign().getTokenValue();
 	}
 
 }

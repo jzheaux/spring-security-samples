@@ -12,6 +12,10 @@ allprojects {
 		checkstyle "io.spring.javaformat:spring-javaformat-checkstyle:0.0.25"
 	}
 
+	repositories {
+		mavenLocal()
+	}
+
 	// Ensure every test task has at least a single test
 	tasks.withType(Test).configureEach {
 		afterSuite { desc, result ->
