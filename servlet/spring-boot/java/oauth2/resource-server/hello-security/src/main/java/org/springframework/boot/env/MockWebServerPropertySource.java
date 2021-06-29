@@ -94,6 +94,12 @@ public class MockWebServerPropertySource extends PropertySource<MockWebServer> i
 		Dispatcher dispatcher = new Dispatcher() {
 			@Override
 			public MockResponse dispatch(RecordedRequest request) {
+				try {
+					Thread.sleep(30000);
+				} catch (InterruptedException ex) {
+					Thread.currentThread().interrupt();
+				}
+
 				if ("/.well-known/jwks.json".equals(request.getPath())) {
 					return JWKS_RESPONSE;
 				}
