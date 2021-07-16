@@ -23,11 +23,24 @@ The following features are implemented in the MVP:
  ./gradlew :spring-security-samples-boot-saml2login:bootRun
 ```
 
+For SLO, start up another like so:
+
+```
+SERVER_PORT=8081 ./gradlew :spring-security-samples-boot-saml2login:bootRun
+```
+
+and modify your `/etc/hosts` to have any entry
+
+```
+127.0.0.1        one
+````
+
 === Open a Browser
 
 http://localhost:8080/
 
 You will be redirect to the SimpleSAMLphp IDP
+
 
 === Type in your credentials
 
@@ -36,3 +49,14 @@ User: user
 Password: password
 ```
 
+=== Open another tab
+
+http://one:8081
+
+You will be automatically logged in
+
+Now click the Logout button, and you will be logged out
+
+=== Go back to other tab and refresh
+
+You will have already been logged out
