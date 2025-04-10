@@ -16,91 +16,72 @@
 
 package org.example.compromisedpasswordchecker;
 
-import java.io.IOException;
+import java.util.UUID;
 
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authentication.password.CompromisedPasswordChecker;
-import org.springframework.security.authentication.password.CompromisedPasswordDecision;
-import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.authentication.ProviderManager;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.crypto.factory.PasswordEncoderFactories;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
+import org.springframework.security.provisioning.UserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
-import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
-import org.springframework.security.web.authentication.password.HaveIBeenPwnedRestApiPasswordChecker;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration(proxyBeanMethods = false)
 @EnableWebSecurity
 public class SecurityConfig {
 
+	Log logger = LogFactory.getLog(SecurityConfig.class);
+
 	@Bean
-	SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+	SecurityFilterChain securityFilterChain(HttpSecurity http, UserDetailsManager users, DaoAuthenticationProvider provider) throws Exception {
+		PasswordCheckingUsernamePasswordAuthenticationFilter filter = new PasswordCheckingUsernamePasswordAuthenticationFilter();
+		filter.setAuthenticationManager(new ProviderManager(provider));
 		// @formatter:off
 		http
-				.authorizeHttpRequests((authz) -> authz
-						.requestMatchers("/reset-password").permitAll()
-						.anyRequest().authenticated()
-				)
-				.formLogin((login) -> login
-						.successHandler(new CompromisedPasswordAwareAuthenticationSuccessHandler())
-				);
+				.authorizeHttpRequests((authz) -> authz.anyRequest().authenticated())
+				.formLogin(Customizer.withDefaults())
+				.addFilterBefore(new PasswordResetAdvisingFilter(), UsernamePasswordAuthenticationFilter.class)
+				.addFilterBefore(new PasswordResetProcessingFilter(users), UsernamePasswordAuthenticationFilter.class)
+				.addFilterBefore(new DefaultPasswordResetPageGeneratingFilter(), UsernamePasswordAuthenticationFilter.class)
+				.addFilterAt(filter, UsernamePasswordAuthenticationFilter.class);
 		// @formatter:on
 		return http.build();
 	}
 
-	@Autowired
-	void configure(AuthenticationManagerBuilder builder) {
-		// @formatter:off
-		builder.eraseCredentials(false); // Do not clear credentials after authentication, so we have access to passwords on success handlers
-		// @formatter:on
-	}
-
 	@Bean
-	PasswordEncoder passwordEncoder() {
-		return PasswordEncoderFactories.createDelegatingPasswordEncoder();
+	DaoAuthenticationProvider authenticationProvider(UserDetailsService users) {
+		DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
+		provider.setUserDetailsService(users);
+		provider.setPostAuthenticationChecks((user) -> {});
+		return provider;
 	}
 
 	@Bean
 	InMemoryUserDetailsManager inMemoryUserDetailsManager() {
-		UserDetails user = User.withDefaultPasswordEncoder()
-			.username("user")
+		UserDetails compromised = User.withDefaultPasswordEncoder()
+			.username("compromised")
 			.password("password")
 			.roles("USER")
 			.build();
-		return new InMemoryUserDetailsManager(user);
-	}
-
-	static class CompromisedPasswordAwareAuthenticationSuccessHandler implements AuthenticationSuccessHandler {
-
-		private final AuthenticationSuccessHandler successHandler = new SimpleUrlAuthenticationSuccessHandler("/");
-
-		private final CompromisedPasswordChecker compromisedPasswordChecker = new HaveIBeenPwnedRestApiPasswordChecker();
-
-		@Override
-		public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
-				Authentication authentication) throws IOException, ServletException {
-			CompromisedPasswordDecision decision = this.compromisedPasswordChecker
-				.check((String) authentication.getCredentials());
-			if (decision.isCompromised()) {
-				HttpSession session = request.getSession(false);
-				session.setAttribute("compromised_password", true);
-			}
-			this.successHandler.onAuthenticationSuccess(request, response, authentication);
-		}
-
+		String random = UUID.randomUUID().toString();
+		UserDetails expired = User.withDefaultPasswordEncoder()
+			.username("user")
+			.password(random)
+			.roles("USER")
+			.credentialsExpired(true)
+			.build();
+		this.logger.info("expired password: " + random);
+		return new InMemoryUserDetailsManager(compromised, expired);
 	}
 
 }
