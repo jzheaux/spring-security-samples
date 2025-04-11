@@ -10,7 +10,7 @@ public class SimplePasswordResetChecker implements PasswordResetAdvisor {
 
 	@Override
 	public PasswordAdvice check(Authentication authentication, String password) {
-		if (authentication instanceof UserDetails user && !user.isCredentialsNonExpired()) {
+		if (authentication.getPrincipal() instanceof UserDetails user && !user.isCredentialsNonExpired()) {
 			return PasswordAdvice.REQUIRE_RESET;
 		}
 		if (this.pwned.check(password).isCompromised()) {

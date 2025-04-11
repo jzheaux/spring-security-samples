@@ -16,6 +16,7 @@
 
 package org.example.compromisedpasswordchecker;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.apache.commons.logging.Log;
@@ -35,17 +36,26 @@ import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.provisioning.UserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.web.method.support.HandlerMethodArgumentResolver;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration(proxyBeanMethods = false)
 @EnableWebSecurity
-public class SecurityConfig {
+public class SecurityConfig implements WebMvcConfigurer {
 
 	Log logger = LogFactory.getLog(SecurityConfig.class);
+
+	@Override
+	public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
+		resolvers.add(new PasswordAdviceMethodArgumentResolver());
+	}
 
 	@Bean
 	SecurityFilterChain securityFilterChain(HttpSecurity http, UserDetailsManager users, DaoAuthenticationProvider provider) throws Exception {
 		PasswordCheckingUsernamePasswordAuthenticationFilter filter = new PasswordCheckingUsernamePasswordAuthenticationFilter();
 		filter.setAuthenticationManager(new ProviderManager(provider));
+		filter.setSecurityContextRepository(new HttpSessionSecurityContextRepository());
 		// @formatter:off
 		http
 				.authorizeHttpRequests((authz) -> authz.anyRequest().authenticated())
