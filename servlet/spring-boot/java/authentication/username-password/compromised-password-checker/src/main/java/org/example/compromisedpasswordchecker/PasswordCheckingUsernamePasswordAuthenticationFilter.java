@@ -24,17 +24,19 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 public class PasswordCheckingUsernamePasswordAuthenticationFilter extends UsernamePasswordAuthenticationFilter {
-	private final PasswordResetAdvisor checker = new SimplePasswordResetChecker();
-	private final PasswordResetHandler handler = new SimplePasswordResetHandler();
+	private final PasswordAdvisor checker = new SimplePasswordResetAdvisor();
+	private final PasswordAdviceRepository repository = new HttpSessionPasswordAdviceRepository();
 
 	@Override
 	protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response, FilterChain chain, Authentication authResult) throws IOException, ServletException {
 		String password = obtainPassword(request);
-		PasswordResetAdvisor.PasswordAdvice advice = this.checker.check(authResult, password);
-		this.handler.handle(request, response, (req, res) -> {}, advice);
+		UserDetails user = (UserDetails) authResult.getPrincipal();
+		PasswordAdvisor.PasswordAdvice advice = this.checker.advise(user, password);
+		this.repository.savePasswordAdvice(request, response, advice);
 		super.successfulAuthentication(request, response, chain, authResult);
 	}
 

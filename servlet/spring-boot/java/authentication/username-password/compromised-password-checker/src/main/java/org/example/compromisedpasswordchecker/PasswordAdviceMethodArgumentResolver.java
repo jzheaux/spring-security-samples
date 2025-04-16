@@ -25,15 +25,15 @@ import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 
 public class PasswordAdviceMethodArgumentResolver implements HandlerMethodArgumentResolver {
-	PasswordResetAdviceRepository advice = new HttpSessionPasswordResetAdviceRepository();
+	PasswordAdviceRepository advice = new HttpSessionPasswordAdviceRepository();
 
 	@Override
 	public boolean supportsParameter(MethodParameter parameter) {
-		return PasswordResetAdvisor.PasswordAdvice.class.isAssignableFrom(parameter.getParameterType());
+		return PasswordAdvisor.PasswordAdvice.class.isAssignableFrom(parameter.getParameterType());
 	}
 
 	@Override
 	public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer, NativeWebRequest webRequest, WebDataBinderFactory binderFactory) throws Exception {
-		return this.advice.loadPasswordResetAdvice(webRequest.getNativeRequest(HttpServletRequest.class));
+		return this.advice.loadPasswordAdvice(webRequest.getNativeRequest(HttpServletRequest.class));
 	}
 }

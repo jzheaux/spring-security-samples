@@ -16,13 +16,21 @@
 
 package org.example.compromisedpasswordchecker;
 
+import java.io.IOException;
+
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-public interface PasswordResetAdviceRepository {
-	PasswordResetAdvisor.PasswordAdvice loadPasswordResetAdvice(HttpServletRequest request);
-
-	void savePasswordResetAdvice(HttpServletRequest request, HttpServletResponse response, PasswordResetAdvisor.PasswordAdvice advice);
-
-	void removePasswordResetAdvice(HttpServletRequest request, HttpServletResponse response);
+public interface PasswordAdviceHandler {
+	void handle(HttpServletRequest request, HttpServletResponse response, FilterChain chain, PasswordAdvisor.PasswordAdvice advice)
+		throws ServletException, IOException;
 }
+
+
+//           		authentication   	request         	process
+//                  --------------		-------				-------
+// KEEP      		redirect to home	continue filter		redirect to home
+// RESET			redirect to home	continue filter		redirect to home
+// REQUIRE_RESET	redirect to home	redirect to reset	redirect to home

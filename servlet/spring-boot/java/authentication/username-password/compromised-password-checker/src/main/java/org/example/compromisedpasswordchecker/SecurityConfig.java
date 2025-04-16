@@ -24,16 +24,17 @@ import org.apache.commons.logging.LogFactory;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authentication.ProviderManager;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.password.MessageDigestPasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
-import org.springframework.security.provisioning.UserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
@@ -52,20 +53,26 @@ public class SecurityConfig implements WebMvcConfigurer {
 	}
 
 	@Bean
-	SecurityFilterChain securityFilterChain(HttpSecurity http, UserDetailsManager users, DaoAuthenticationProvider provider) throws Exception {
+	SecurityFilterChain securityFilterChain(HttpSecurity http, ExpirationUpdatingUserDetailsManager users, AuthenticationManager authenticationManager) throws Exception {
 		PasswordCheckingUsernamePasswordAuthenticationFilter filter = new PasswordCheckingUsernamePasswordAuthenticationFilter();
-		filter.setAuthenticationManager(new ProviderManager(provider));
+		filter.setAuthenticationManager(authenticationManager);
 		filter.setSecurityContextRepository(new HttpSessionSecurityContextRepository());
 		// @formatter:off
 		http
-				.authorizeHttpRequests((authz) -> authz.anyRequest().authenticated())
-				.formLogin(Customizer.withDefaults())
-				.addFilterBefore(new PasswordResetAdvisingFilter(), UsernamePasswordAuthenticationFilter.class)
-				.addFilterBefore(new PasswordResetProcessingFilter(users), UsernamePasswordAuthenticationFilter.class)
-				.addFilterBefore(new DefaultPasswordResetPageGeneratingFilter(), UsernamePasswordAuthenticationFilter.class)
-				.addFilterAt(filter, UsernamePasswordAuthenticationFilter.class);
+			.authorizeHttpRequests((authz) -> authz.anyRequest().authenticated())
+			.formLogin(Customizer.withDefaults())
+			.addFilterBefore(new DefaultPasswordResetPageGeneratingFilter(), UsernamePasswordAuthenticationFilter.class)
+			.addFilterBefore(new PasswordResetProcessingFilter(users), UsernamePasswordAuthenticationFilter.class)
+			.addFilterBefore(new PasswordAdvisingFilter(), UsernamePasswordAuthenticationFilter.class)
+			.addFilterAt(filter, UsernamePasswordAuthenticationFilter.class);
 		// @formatter:on
 		return http.build();
+	}
+
+
+	@Bean
+	AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
+		return configuration.getAuthenticationManager();
 	}
 
 	@Bean
@@ -77,7 +84,7 @@ public class SecurityConfig implements WebMvcConfigurer {
 	}
 
 	@Bean
-	InMemoryUserDetailsManager inMemoryUserDetailsManager() {
+	ExpirationUpdatingUserDetailsManager users() {
 		UserDetails compromised = User.withDefaultPasswordEncoder()
 			.username("compromised")
 			.password("password")
@@ -91,7 +98,8 @@ public class SecurityConfig implements WebMvcConfigurer {
 			.credentialsExpired(true)
 			.build();
 		this.logger.info("expired password: " + random);
-		return new InMemoryUserDetailsManager(compromised, expired);
+		InMemoryUserDetailsManager delegate = new InMemoryUserDetailsManager(compromised, expired);
+		return new ExpirationUpdatingUserDetailsManager(delegate);
 	}
 
 }

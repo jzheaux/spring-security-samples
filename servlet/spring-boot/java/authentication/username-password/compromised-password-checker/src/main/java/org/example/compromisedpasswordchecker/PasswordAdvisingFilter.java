@@ -25,14 +25,14 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.web.filter.OncePerRequestFilter;
 
-public class PasswordResetAdvisingFilter extends OncePerRequestFilter {
-	private final PasswordResetHandler resetHandler = new SimplePasswordResetHandler();
-	private final PasswordResetAdviceRepository resetAdvice = new HttpSessionPasswordResetAdviceRepository();
+public class PasswordAdvisingFilter extends OncePerRequestFilter {
+	private final PasswordAdviceHandler resetHandler = new SimplePasswordAdviceHandler();
+	private final PasswordAdviceRepository resetAdvice = new HttpSessionPasswordAdviceRepository();
 
 	@Override
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
 		throws ServletException, IOException {
-		PasswordResetAdvisor.PasswordAdvice advice = this.resetAdvice.loadPasswordResetAdvice(request);
+		PasswordAdvisor.PasswordAdvice advice = this.resetAdvice.loadPasswordAdvice(request);
 		this.resetHandler.handle(request, response, chain, advice);
 	}
 }
