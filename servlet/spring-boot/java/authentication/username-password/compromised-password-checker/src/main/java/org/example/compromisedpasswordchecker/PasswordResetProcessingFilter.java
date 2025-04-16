@@ -21,25 +21,30 @@ import java.io.IOException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.InsufficientAuthenticationException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.provisioning.UserDetailsManager;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsPasswordService;
+import org.springframework.security.crypto.factory.PasswordEncoderFactories;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 public class PasswordResetProcessingFilter extends OncePerRequestFilter {
 	private final RequestMatcher requestMatcher = PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/reset-password");
-	private final PasswordResetAdvisor advisor = new SimplePasswordResetChecker();
-	private final PasswordResetHandler handler = new SimplePasswordResetHandler();
-	private final UserDetailsManager manager;
+	private final PasswordAdvisor advisor = new SimplePasswordResetAdvisor();
+	private final PasswordEncoder encoder = PasswordEncoderFactories.createDelegatingPasswordEncoder();
+	private final PasswordAdviceRepository repository = new HttpSessionPasswordAdviceRepository();
+	private final UserDetailsPasswordService users;
 
-	public PasswordResetProcessingFilter(UserDetailsManager manager) {
-		this.manager = manager;
+	public PasswordResetProcessingFilter(UserDetailsPasswordService manager) {
+		this.users = manager;
 	}
 
 	@Override
@@ -48,20 +53,51 @@ public class PasswordResetProcessingFilter extends OncePerRequestFilter {
 			chain.doFilter(request, response);
 			return;
 		}
-		String password = request.getParameter("password");
+		String password = request.getParameter("newPassword");
 		if (password == null) {
 			chain.doFilter(request, response);
 			return;
 		}
-		String oldPassword = request.getParameter("old_password");
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 		if (authentication == null) {
 			throw new InsufficientAuthenticationException("authentication required");
 		}
-		PasswordResetAdvisor.PasswordAdvice advice = this.advisor.check(authentication, password);
-		if (advice == PasswordResetAdvisor.PasswordAdvice.KEEP) {
-			this.manager.changePassword(oldPassword, password);
+		String oldPassword = request.getParameter("currentPassword");
+		UserDetails user = (UserDetails) authentication.getPrincipal();
+		PasswordAdvisor.PasswordAdvice advice = this.advisor.advise(user, oldPassword, password);
+		if (advice == PasswordAdvisor.PasswordAdvice.KEEP) {
+			this.users.updatePassword(user, this.encoder.encode(password));
+			this.repository.removePasswordAdvice(request, response);
 		}
-		this.handler.handle(request, response, chain, advice);
+		HttpServletRequest login = new UsernamePasswordHttpServletRequest(request, user.getUsername(), password);
+		request.getRequestDispatcher("/login").forward(login, response);
+	}
+
+	private static final class UsernamePasswordHttpServletRequest extends HttpServletRequestWrapper {
+		private final String username;
+		private final String password;
+
+		UsernamePasswordHttpServletRequest(HttpServletRequest request, String username, String password) {
+			super(request);
+			this.username = username;
+			this.password = password;
+		}
+
+		@Override
+		public String getMethod() {
+			return "POST";
+		}
+
+		@Override
+		public String getParameter(String name) {
+			if ("username".equals(name)) {
+				return this.username;
+			}
+			if ("password".equals(name)) {
+				return this.password;
+			}
+			return super.getParameter(name);
+		}
+
 	}
 }

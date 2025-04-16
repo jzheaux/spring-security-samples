@@ -16,14 +16,13 @@
 
 package org.example.compromisedpasswordchecker;
 
-import java.io.IOException;
-
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-public interface PasswordResetHandler {
-	void handle(HttpServletRequest request, HttpServletResponse response, FilterChain chain, PasswordResetAdvisor.PasswordAdvice advice)
-		throws ServletException, IOException;
+public interface PasswordAdviceRepository {
+	PasswordAdvisor.PasswordAdvice loadPasswordAdvice(HttpServletRequest request);
+
+	void savePasswordAdvice(HttpServletRequest request, HttpServletResponse response, PasswordAdvisor.PasswordAdvice advice);
+
+	void removePasswordAdvice(HttpServletRequest request, HttpServletResponse response);
 }

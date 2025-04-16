@@ -24,8 +24,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 @Controller
 public class HomeController {
 	@GetMapping
-	public String index(PasswordResetAdvisor.PasswordAdvice advice, HttpServletRequest request) {
-		if (advice == PasswordResetAdvisor.PasswordAdvice.RESET) {
+	public String index(PasswordAdvisor.PasswordAdvice advice, HttpServletRequest request) {
+		if (advice == PasswordAdvisor.PasswordAdvice.RESET) {
 			request.setAttribute("compromised", true);
 		}
 		return "index";

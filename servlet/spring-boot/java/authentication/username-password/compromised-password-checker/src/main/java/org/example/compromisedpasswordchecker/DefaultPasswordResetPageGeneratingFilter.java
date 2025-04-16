@@ -24,6 +24,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.http.HttpMethod;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -37,6 +38,35 @@ public class DefaultPasswordResetPageGeneratingFilter extends OncePerRequestFilt
 			chain.doFilter(request, response);
 			return;
 		}
-		response.getWriter().println("Reset now"); // include csrf
+		String page = PASSWORD_RESET_TEMPLATE;
+		CsrfToken token = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
+		if (token != null) {
+			page = page
+				.replace("{{parameter}}", token.getParameterName())
+				.replace("{{value}}", token.getToken());
+		}
+		response.setContentType("text/html;charset=UTF-8");
+		response.getWriter().println(page);
 	}
+
+	private static final String PASSWORD_RESET_TEMPLATE = """
+		<!DOCTYPE html>
+		<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="https://www.thymeleaf.org" lang="en">
+		<head>
+			<title>Hello Spring Security</title>
+			<meta charset="utf-8" />
+		</head>
+		<body>
+			<h3>Your password is compromised, please reset it:</h3>
+			<form th:action="/reset-password" method="post">
+				<label for="currentPassword">Current password</label>
+				<input type="password" id="currentPassword" name="currentPassword" > <br/>
+				<label for="newPassword">New password</label>
+				<input type="password" id="newPassword" name="newPassword"> <br/>
+				<input type="hidden" name="{{parameter}}" value="{{value}}"/>
+				<input id="submit" type="submit" value="Submit"/>
+			</form>
+		</body>
+		</html>
+		""";
 }

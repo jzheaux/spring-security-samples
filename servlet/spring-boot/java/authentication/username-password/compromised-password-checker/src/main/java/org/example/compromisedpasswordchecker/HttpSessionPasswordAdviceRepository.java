@@ -19,21 +19,24 @@ package org.example.compromisedpasswordchecker;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-public class HttpSessionPasswordResetAdviceRepository implements PasswordResetAdviceRepository  {
-	private static final String PASSWORD_ADVICE_ATTRIBUTE_NAME = HttpSessionPasswordResetAdviceRepository.class.getName() + ".PASSWORD_ADVICE";
+public class HttpSessionPasswordAdviceRepository implements PasswordAdviceRepository {
+	private static final String PASSWORD_ADVICE_ATTRIBUTE_NAME = HttpSessionPasswordAdviceRepository.class.getName() + ".PASSWORD_ADVICE";
 
 	@Override
-	public PasswordResetAdvisor.PasswordAdvice loadPasswordResetAdvice(HttpServletRequest request) {
-		return (PasswordResetAdvisor.PasswordAdvice) request.getSession().getAttribute(PASSWORD_ADVICE_ATTRIBUTE_NAME);
+	public PasswordAdvisor.PasswordAdvice loadPasswordAdvice(HttpServletRequest request) {
+		return (PasswordAdvisor.PasswordAdvice) request.getSession().getAttribute(PASSWORD_ADVICE_ATTRIBUTE_NAME);
 	}
 
 	@Override
-	public void savePasswordResetAdvice(HttpServletRequest request, HttpServletResponse response, PasswordResetAdvisor.PasswordAdvice advice) {
+	public void savePasswordAdvice(HttpServletRequest request, HttpServletResponse response, PasswordAdvisor.PasswordAdvice advice) {
+		if (advice == null) {
+			return;
+		}
 		request.getSession().setAttribute(PASSWORD_ADVICE_ATTRIBUTE_NAME, advice);
 	}
 
 	@Override
-	public void removePasswordResetAdvice(HttpServletRequest request, HttpServletResponse response) {
+	public void removePasswordAdvice(HttpServletRequest request, HttpServletResponse response) {
 		request.getSession().removeAttribute(PASSWORD_ADVICE_ATTRIBUTE_NAME);
 	}
 }

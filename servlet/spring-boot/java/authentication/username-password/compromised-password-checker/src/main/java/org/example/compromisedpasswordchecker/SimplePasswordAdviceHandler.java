@@ -25,31 +25,21 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.security.web.DefaultRedirectStrategy;
 import org.springframework.security.web.RedirectStrategy;
+import org.springframework.security.web.savedrequest.NullRequestCache;
+import org.springframework.security.web.savedrequest.RequestCache;
 
-public class SimplePasswordResetHandler implements PasswordResetHandler {
+public class SimplePasswordAdviceHandler implements PasswordAdviceHandler {
 	private final RedirectStrategy redirectStrategy = new DefaultRedirectStrategy();
-	private final PasswordResetAdviceRepository advice = new HttpSessionPasswordResetAdviceRepository();
+	private final RequestCache cache = new NullRequestCache();
 
 	@Override
-	public void handle(HttpServletRequest request, HttpServletResponse response, FilterChain chain, PasswordResetAdvisor.PasswordAdvice advice)
+	public void handle(HttpServletRequest request, HttpServletResponse response, FilterChain chain, PasswordAdvisor.PasswordAdvice advice)
 		throws IOException, ServletException {
-		if (advice == null) {
-			chain.doFilter(request, response);
-			return;
-		}
-		if (advice == PasswordResetAdvisor.PasswordAdvice.KEEP) {
-			this.advice.removePasswordResetAdvice(request, response);
-			chain.doFilter(request, response);
-			return;
-		}
-		if (advice == PasswordResetAdvisor.PasswordAdvice.RESET) {
-			this.advice.savePasswordResetAdvice(request, response, advice);
-			chain.doFilter(request, response);
-			return;
-		}
-		if (advice == PasswordResetAdvisor.PasswordAdvice.REQUIRE_RESET) {
-			this.advice.savePasswordResetAdvice(request, response, advice);
+		if (advice == PasswordAdvisor.PasswordAdvice.REQUIRE_RESET) {
+			this.cache.saveRequest(request, response);
 			this.redirectStrategy.sendRedirect(request, response, "/reset-password");
+			return;
 		}
+		chain.doFilter(request, response);
 	}
 }
