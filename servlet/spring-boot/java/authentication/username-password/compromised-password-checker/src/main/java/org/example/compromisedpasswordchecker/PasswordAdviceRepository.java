@@ -20,9 +20,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 public interface PasswordAdviceRepository {
-	PasswordAdvisor.PasswordAdvice loadPasswordAdvice(HttpServletRequest request);
+	ChangePasswordAdvice loadPasswordAdvice(HttpServletRequest request);
 
-	void savePasswordAdvice(HttpServletRequest request, HttpServletResponse response, PasswordAdvisor.PasswordAdvice advice);
+	void savePasswordAdvice(HttpServletRequest request, HttpServletResponse response, ChangePasswordAdvice advice);
 
 	void removePasswordAdvice(HttpServletRequest request, HttpServletResponse response);
 }

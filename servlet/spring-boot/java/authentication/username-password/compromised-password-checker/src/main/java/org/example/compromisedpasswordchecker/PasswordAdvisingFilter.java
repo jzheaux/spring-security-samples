@@ -32,7 +32,7 @@ public class PasswordAdvisingFilter extends OncePerRequestFilter {
 	@Override
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
 		throws ServletException, IOException {
-		PasswordAdvisor.PasswordAdvice advice = this.resetAdvice.loadPasswordAdvice(request);
+		ChangePasswordAdvice advice = this.resetAdvice.loadPasswordAdvice(request);
 		this.resetHandler.handle(request, response, chain, advice);
 	}
 }

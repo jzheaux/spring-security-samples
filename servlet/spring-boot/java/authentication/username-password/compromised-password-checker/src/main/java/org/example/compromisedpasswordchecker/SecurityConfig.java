@@ -17,27 +17,25 @@
 package org.example.compromisedpasswordchecker;
 
 import java.util.List;
-import java.util.UUID;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsPasswordService;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.crypto.password.MessageDigestPasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -53,18 +51,15 @@ public class SecurityConfig implements WebMvcConfigurer {
 	}
 
 	@Bean
-	SecurityFilterChain securityFilterChain(HttpSecurity http, ExpirationUpdatingUserDetailsManager users, AuthenticationManager authenticationManager) throws Exception {
-		PasswordCheckingUsernamePasswordAuthenticationFilter filter = new PasswordCheckingUsernamePasswordAuthenticationFilter();
-		filter.setAuthenticationManager(authenticationManager);
-		filter.setSecurityContextRepository(new HttpSessionSecurityContextRepository());
+	SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectProvider<Customizer<HttpSecurity>> customizers) throws Exception {
 		// @formatter:off
 		http
-			.authorizeHttpRequests((authz) -> authz.anyRequest().authenticated())
-			.formLogin(Customizer.withDefaults())
-			.addFilterBefore(new DefaultPasswordResetPageGeneratingFilter(), UsernamePasswordAuthenticationFilter.class)
-			.addFilterBefore(new PasswordResetProcessingFilter(users), UsernamePasswordAuthenticationFilter.class)
-			.addFilterBefore(new PasswordAdvisingFilter(), UsernamePasswordAuthenticationFilter.class)
-			.addFilterAt(filter, UsernamePasswordAuthenticationFilter.class);
+			.authorizeHttpRequests((authz) -> authz
+				.requestMatchers("/admin/**").hasRole("ADMIN")
+				.anyRequest().authenticated()
+			)
+			.formLogin(Customizer.withDefaults());
+		customizers.forEach((c) -> c.customize(http));
 		// @formatter:on
 		return http.build();
 	}
@@ -76,30 +71,45 @@ public class SecurityConfig implements WebMvcConfigurer {
 	}
 
 	@Bean
-	DaoAuthenticationProvider authenticationProvider(UserDetailsService users) {
-		DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
-		provider.setUserDetailsService(users);
-		provider.setPostAuthenticationChecks((user) -> {});
-		return provider;
+	InMemoryUserDetailsManager users() {
+		String tooLongPassword = "{bcrypt}$2a$10$ZI9RHDidWWbUJ38noohrsOUEDod2v15BEa.3gpQQ5kUoDWKr3yOD6";
+		String adminPassword = "{bcrypt}$2a$10$O7yxTCDZXQ0H6G2dLZpMS.a0e4Lfv1t4/JhHjrsL5BAk4.ZkT.fyG";
+
+		UserDetails compromised = User.withUsername("compromised").password("password").roles("USER").build();
+		UserDetails tooLong = User.withUsername("toolong").password(tooLongPassword).roles("USER").build();
+		UserDetails admin = User.withUsername("admin").password(adminPassword).roles("ADMIN").build();
+
+		return new InMemoryUserDetailsManager(compromised, tooLong, admin);
 	}
 
 	@Bean
-	ExpirationUpdatingUserDetailsManager users() {
-		UserDetails compromised = User.withDefaultPasswordEncoder()
-			.username("compromised")
-			.password("password")
-			.roles("USER")
-			.build();
-		String random = UUID.randomUUID().toString();
-		UserDetails expired = User.withDefaultPasswordEncoder()
-			.username("user")
-			.password(random)
-			.roles("USER")
-			.credentialsExpired(true)
-			.build();
-		this.logger.info("expired password: " + random);
-		InMemoryUserDetailsManager delegate = new InMemoryUserDetailsManager(compromised, expired);
-		return new ExpirationUpdatingUserDetailsManager(delegate);
+	Customizer<HttpSecurity> passwordResetFilter(UserDetailsPasswordService passwords) {
+		return (http) -> http
+			.addFilterBefore(new DefaultPasswordResetPageGeneratingFilter(), UsernamePasswordAuthenticationFilter.class)
+			.addFilterBefore(new PasswordResetProcessingFilter(passwords), UsernamePasswordAuthenticationFilter.class)
+			// TODO: does this prevent logout?
+			.addFilterBefore(new PasswordAdvisingFilter(), UsernamePasswordAuthenticationFilter.class);
+	}
+
+	@Bean
+	Customizer<HttpSecurity> usernamePasswordFilter(AuthenticationManager authenticationManager) {
+		PasswordCheckingUsernamePasswordAuthenticationFilter filter =
+			new PasswordCheckingUsernamePasswordAuthenticationFilter(authenticationManager);
+		return (http) -> http.addFilterAt(filter, UsernamePasswordAuthenticationFilter.class);
+	}
+
+	@Bean
+	ChangePasswordService changePasswordService() {
+		return new InMemoryChangePasswordService();
+	}
+
+	@Bean
+	ChangePasswordAdvisor changePasswordAdvisor(UserDetailsService users, ChangePasswordService passwords) {
+		return new DelegatingChangePasswordAdvisor(List.of(
+			new ChangeCompromisedPasswordAdvisor(),
+			new ChangeRepeatedPasswordAdvisor(users),
+			new ChangeLengthPasswordAdvisor(12, 72),
+			new ChangePasswordServiceAdvisor(passwords)));
 	}
 
 }

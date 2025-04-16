@@ -16,18 +16,12 @@
 
 package org.example.compromisedpasswordchecker;
 
-import jakarta.servlet.http.HttpServletRequest;
-
-import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-
-@Controller
-public class HomeController {
-	@GetMapping
-	public String index(ChangePasswordAdvice advice, HttpServletRequest request) {
-		if (advice.recommendsReset()) {
-			request.setAttribute("compromised", true);
-		}
-		return "index";
-	}
+public enum ChangePasswordReason {
+	COMPROMISED,
+	EXPIRED,
+	MISSING_CHARACTERS,
+	REPEATED,
+	TOO_SHORT,
+	TOO_LONG,
+	UNSUPPORTED_CHARACTERS
 }

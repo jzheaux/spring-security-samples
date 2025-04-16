@@ -16,18 +16,25 @@
 
 package org.example.compromisedpasswordchecker;
 
-import jakarta.servlet.http.HttpServletRequest;
+import java.util.List;
 
-import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
+public class DelegatingChangePasswordAdvisor implements ChangePasswordAdvisor {
+	private final List<ChangePasswordAdvisor> advisors;
 
-@Controller
-public class HomeController {
-	@GetMapping
-	public String index(ChangePasswordAdvice advice, HttpServletRequest request) {
-		if (advice.recommendsReset()) {
-			request.setAttribute("compromised", true);
-		}
-		return "index";
+	public DelegatingChangePasswordAdvisor(List<ChangePasswordAdvisor> advisors) {
+		this.advisors = advisors;
 	}
+
+	@Override
+	public ChangePasswordAdvice advise(ChangePasswordAdviceRequest request) {
+		ChangePasswordAdvice.Builder builder = ChangePasswordAdvice.builder();
+		for (ChangePasswordAdvisor advisor : this.advisors) {
+			ChangePasswordAdvice advice = advisor.advise(request);
+			if (advice != null) {
+				builder.advice(advice);
+			}
+		}
+		return builder.build();
+	}
+
 }

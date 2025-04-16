@@ -29,7 +29,7 @@ public class PasswordAdviceMethodArgumentResolver implements HandlerMethodArgume
 
 	@Override
 	public boolean supportsParameter(MethodParameter parameter) {
-		return PasswordAdvisor.PasswordAdvice.class.isAssignableFrom(parameter.getParameterType());
+		return ChangePasswordAdvice.class.isAssignableFrom(parameter.getParameterType());
 	}
 
 	@Override

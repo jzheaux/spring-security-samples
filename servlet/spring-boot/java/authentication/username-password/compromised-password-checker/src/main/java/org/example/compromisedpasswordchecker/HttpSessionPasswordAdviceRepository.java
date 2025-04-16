@@ -23,12 +23,12 @@ public class HttpSessionPasswordAdviceRepository implements PasswordAdviceReposi
 	private static final String PASSWORD_ADVICE_ATTRIBUTE_NAME = HttpSessionPasswordAdviceRepository.class.getName() + ".PASSWORD_ADVICE";
 
 	@Override
-	public PasswordAdvisor.PasswordAdvice loadPasswordAdvice(HttpServletRequest request) {
-		return (PasswordAdvisor.PasswordAdvice) request.getSession().getAttribute(PASSWORD_ADVICE_ATTRIBUTE_NAME);
+	public ChangePasswordAdvice loadPasswordAdvice(HttpServletRequest request) {
+		return (ChangePasswordAdvice) request.getSession().getAttribute(PASSWORD_ADVICE_ATTRIBUTE_NAME);
 	}
 
 	@Override
-	public void savePasswordAdvice(HttpServletRequest request, HttpServletResponse response, PasswordAdvisor.PasswordAdvice advice) {
+	public void savePasswordAdvice(HttpServletRequest request, HttpServletResponse response, ChangePasswordAdvice advice) {
 		if (advice == null) {
 			return;
 		}

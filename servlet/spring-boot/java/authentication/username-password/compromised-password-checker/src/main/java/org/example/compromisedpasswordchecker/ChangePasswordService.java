@@ -16,18 +16,12 @@
 
 package org.example.compromisedpasswordchecker;
 
-import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.security.core.userdetails.UserDetails;
 
-import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
+public interface ChangePasswordService {
+	ChangePasswordAdvice loadPasswordAdvice(UserDetails user);
 
-@Controller
-public class HomeController {
-	@GetMapping
-	public String index(ChangePasswordAdvice advice, HttpServletRequest request) {
-		if (advice.recommendsReset()) {
-			request.setAttribute("compromised", true);
-		}
-		return "index";
-	}
+	void savePasswordAdvice(UserDetails user, ChangePasswordAdvice advice);
+
+	void removePasswordAdvice(UserDetails user);
 }

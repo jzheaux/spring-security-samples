@@ -24,7 +24,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 public interface PasswordAdviceHandler {
-	void handle(HttpServletRequest request, HttpServletResponse response, FilterChain chain, PasswordAdvisor.PasswordAdvice advice)
+	void handle(HttpServletRequest request, HttpServletResponse response, FilterChain chain, ChangePasswordAdvice advice)
 		throws ServletException, IOException;
 }
 

@@ -27,15 +27,22 @@ import org.springframework.security.web.DefaultRedirectStrategy;
 import org.springframework.security.web.RedirectStrategy;
 import org.springframework.security.web.savedrequest.NullRequestCache;
 import org.springframework.security.web.savedrequest.RequestCache;
+import org.springframework.security.web.util.matcher.AnyRequestMatcher;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 
 public class SimplePasswordAdviceHandler implements PasswordAdviceHandler {
 	private final RedirectStrategy redirectStrategy = new DefaultRedirectStrategy();
 	private final RequestCache cache = new NullRequestCache();
+	private RequestMatcher requestMatcher = AnyRequestMatcher.INSTANCE;
 
 	@Override
-	public void handle(HttpServletRequest request, HttpServletResponse response, FilterChain chain, PasswordAdvisor.PasswordAdvice advice)
+	public void handle(HttpServletRequest request, HttpServletResponse response, FilterChain chain, ChangePasswordAdvice advice)
 		throws IOException, ServletException {
-		if (advice == PasswordAdvisor.PasswordAdvice.REQUIRE_RESET) {
+		if (!this.requestMatcher.matches(request)) {
+			return;
+		}
+		// request matcher to decide whether to check
+		if (advice.requiresReset()) {
 			this.cache.saveRequest(request, response);
 			this.redirectStrategy.sendRedirect(request, response, "/reset-password");
 			return;
