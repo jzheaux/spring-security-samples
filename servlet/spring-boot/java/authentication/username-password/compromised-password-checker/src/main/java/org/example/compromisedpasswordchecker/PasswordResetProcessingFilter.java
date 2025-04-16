@@ -67,8 +67,8 @@ public class PasswordResetProcessingFilter extends OncePerRequestFilter {
 		PasswordAdvisor.PasswordAdvice advice = this.advisor.advise(user, oldPassword, password);
 		if (advice == PasswordAdvisor.PasswordAdvice.KEEP) {
 			this.users.updatePassword(user, this.encoder.encode(password));
-			this.repository.removePasswordAdvice(request, response);
 		}
+		this.repository.removePasswordAdvice(request, response);
 		HttpServletRequest login = new UsernamePasswordHttpServletRequest(request, user.getUsername(), password);
 		request.getRequestDispatcher("/login").forward(login, response);
 	}
