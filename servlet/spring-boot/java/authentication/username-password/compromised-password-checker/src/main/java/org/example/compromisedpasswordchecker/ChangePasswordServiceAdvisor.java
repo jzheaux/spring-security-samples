@@ -25,6 +25,9 @@ public class ChangePasswordServiceAdvisor implements ChangePasswordAdvisor {
 
 	@Override
 	public ChangePasswordAdvice advise(ChangePasswordAdviceRequest request) {
+		if (request instanceof ChangeUpdatedPasswordAdviceRequest) {
+			return ChangePasswordAdvice.keep();
+		}
 		return this.changePasswordAdviceService.loadPasswordAdvice(request.userDetails());
 	}
 }

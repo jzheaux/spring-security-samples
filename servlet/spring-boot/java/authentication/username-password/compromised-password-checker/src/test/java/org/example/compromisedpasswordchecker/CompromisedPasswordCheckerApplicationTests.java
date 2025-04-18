@@ -19,6 +19,7 @@ package org.example.compromisedpasswordchecker;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -49,22 +50,41 @@ class CompromisedPasswordCheckerApplicationTests {
 	void whenAdminSetsExpiredAdviceThenUserLoginRedirectsToResetPassword() throws Exception {
 		this.mvc.perform(get("/"))
 			.andExpect(status().isOk());
+		// change the password to a test value
+		String random = UUID.randomUUID().toString();
+		this.mvc.perform(post("/reset-password").with(csrf())
+				.param("newPassword", random))
+			.andExpect(status().isFound())
+			.andExpect(redirectedUrl("/"));
+		// admin "expires" their own password
 		this.mvc.perform(post("/admin/passwords/expire/admin").with(csrf()))
 			.andExpect(status().isCreated())
 			.andExpect(jsonPath("$.action").value("REQUIRE_CHANGE"));
-		this.mvc.perform(get("/"))
+		// requests redirect to /reset-password
+		MvcResult result = this.mvc.perform(post("/login").with(csrf())
+				.param("username", "admin")
+				.param("password", random))
+			.andExpect(status().isFound())
+			.andExpect(redirectedUrl("/"))
+			.andReturn();
+		MockHttpSession session = (MockHttpSession) result.getRequest().getSession();
+		this.mvc.perform(get("/").session(session))
 			.andExpect(status().isFound())
 			.andExpect(redirectedUrl("/reset-password"));
+		// reset the password to update
+		random = UUID.randomUUID().toString();
 		this.mvc.perform(post("/reset-password").with(csrf())
-				.param("newPassword", UUID.randomUUID().toString()))
+			.session(session)
+			.param("newPassword", random))
 			.andExpect(status().isFound())
 			.andExpect(redirectedUrl("/"));
-		this.mvc.perform(get("/admin/passwords/advice/admin"))
+		// now we're good
+		this.mvc.perform(get("/").session(session))
 			.andExpect(status().isOk());
 	}
 
 	@Test
-	void whenTooLongAdviceThenUserLoginAllowed() throws Exception {
+	void whenCompromisedThenUserLoginAllowed() throws Exception {
 		MvcResult result = this.mvc.perform(post("/login").with(csrf())
 				.param("username", "compromised")
 				.param("password", "password"))

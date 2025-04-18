@@ -50,7 +50,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 public class ChangePasswordProcessingFilter extends OncePerRequestFilter {
 	private final RequestMatcher requestMatcher = PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/reset-password");
-	private final ChangePasswordAdvisor advisor = new ChangeCompromisedPasswordAdvisor();
+	private ChangePasswordAdvisor advisor = new ChangeCompromisedPasswordAdvisor();
 	private final PasswordEncoder encoder = PasswordEncoderFactories.createDelegatingPasswordEncoder();
 	private final AuthenticationEntryPoint entryPoint = new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED);
 	private final AuthorizationManager<RequestAuthorizationContext> authorizationManager =
@@ -104,5 +104,9 @@ public class ChangePasswordProcessingFilter extends OncePerRequestFilter {
 
 	public void setChangePasswordAdviceRepository(ChangePasswordAdviceRepository advice) {
 		this.repository = advice;
+	}
+
+	public void setChangePasswordAdvisor(ChangePasswordAdvisor advisor) {
+		this.advisor = advisor;
 	}
 }

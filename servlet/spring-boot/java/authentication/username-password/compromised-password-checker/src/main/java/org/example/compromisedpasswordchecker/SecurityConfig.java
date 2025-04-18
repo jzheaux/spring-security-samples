@@ -18,6 +18,8 @@ package org.example.compromisedpasswordchecker;
 
 import java.util.List;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -29,6 +31,8 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsPasswordService;
@@ -83,11 +87,37 @@ public class SecurityConfig implements WebMvcConfigurer {
 	}
 
 	@Bean
-	Customizer<HttpSecurity> passwordResetFilter(UserDetailsPasswordService passwords, ChangePasswordAdviceRepository advice) {
+	Customizer<HttpSecurity> passwordResetFilter(UserDetailsPasswordService passwords, ChangePasswordAdviceService service, ChangePasswordAdvisor advisor) {
 		ChangePasswordProcessingFilter processing = new ChangePasswordProcessingFilter(passwords);
-		processing.setChangePasswordAdviceRepository(advice);
+		processing.setChangePasswordAdvisor(advisor);
+		HttpSessionChangePasswordAdviceRepository session = new HttpSessionChangePasswordAdviceRepository();
+		processing.setChangePasswordAdviceRepository(new ChangePasswordAdviceRepository() {
+			@Override
+			public ChangePasswordAdvice loadPasswordAdvice(HttpServletRequest request) {
+				return session.loadPasswordAdvice(request);
+			}
+
+			@Override
+			public void savePasswordAdvice(HttpServletRequest request, HttpServletResponse response, ChangePasswordAdvice advice) {
+				if (advice.getAction() == ChangePasswordAdvice.Action.KEEP) {
+					removePasswordAdvice(request, response);
+					return;
+				}
+				session.savePasswordAdvice(request, response, advice);
+				Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+				UserDetails user = (UserDetails) authentication.getPrincipal();
+				service.savePasswordAdvice(user, advice);
+			}
+
+			@Override
+			public void removePasswordAdvice(HttpServletRequest request, HttpServletResponse response) {
+				session.removePasswordAdvice(request, response);
+				Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+				UserDetails user = (UserDetails) authentication.getPrincipal();
+				service.removePasswordAdvice(user);
+			}
+		});
 		ChangePasswordAdvisingFilter advising = new ChangePasswordAdvisingFilter();
-		advising.setChangePasswordAdviceRepository(advice);
 		return (http) -> http
 			.addFilterBefore(new DefaultChangePasswordPageGeneratingFilter(), UsernamePasswordAuthenticationFilter.class)
 			.addFilterBefore(processing, UsernamePasswordAuthenticationFilter.class)
@@ -96,18 +126,11 @@ public class SecurityConfig implements WebMvcConfigurer {
 	}
 
 	@Bean
-	Customizer<HttpSecurity> usernamePasswordFilter(AuthenticationManager authenticationManager, ChangePasswordAdviceRepository advice) {
+	Customizer<HttpSecurity> usernamePasswordFilter(AuthenticationManager authenticationManager, ChangePasswordAdvisor advisor) {
 		PasswordCheckingUsernamePasswordAuthenticationFilter filter =
 			new PasswordCheckingUsernamePasswordAuthenticationFilter(authenticationManager);
-		filter.setChangePasswordAdviceRepository(advice);
+		filter.setChangePasswordAdvisor(advisor);
 		return (http) -> http.addFilterAt(filter, UsernamePasswordAuthenticationFilter.class);
-	}
-
-	@Bean
-	ChangePasswordAdviceRepository changePasswordAdviceRepository(ChangePasswordAdviceService advice) {
-		HttpSessionChangePasswordAdviceRepository repository = new HttpSessionChangePasswordAdviceRepository();
-		repository.setChangePasswordAdviceService(advice);
-		return repository;
 	}
 
 	@Bean
@@ -120,7 +143,7 @@ public class SecurityConfig implements WebMvcConfigurer {
 		return new DelegatingChangePasswordAdvisor(List.of(
 			new ChangeCompromisedPasswordAdvisor(),
 			new ChangeRepeatedPasswordAdvisor(users),
-			new ChangeLengthPasswordAdvisor(12, 72),
+			new ChangeLengthPasswordAdvisor(8, 72),
 			new ChangePasswordServiceAdvisor(passwords)));
 	}
 

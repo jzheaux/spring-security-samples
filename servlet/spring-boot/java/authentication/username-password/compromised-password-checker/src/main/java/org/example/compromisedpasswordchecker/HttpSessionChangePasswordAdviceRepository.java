@@ -31,36 +31,11 @@ import org.springframework.util.function.SingletonSupplier;
 public class HttpSessionChangePasswordAdviceRepository implements ChangePasswordAdviceRepository {
 	private static final String PASSWORD_ADVICE_ATTRIBUTE_NAME = HttpSessionChangePasswordAdviceRepository.class.getName() + ".PASSWORD_ADVICE";
 
-	private ChangePasswordAdviceService advice = new ChangePasswordAdviceService() {
-		@Override
-		public ChangePasswordAdvice loadPasswordAdvice(UserDetails user) {
-			return null;
-		}
-
-		@Override
-		public void savePasswordAdvice(UserDetails user, ChangePasswordAdvice advice) {
-
-		}
-
-		@Override
-		public void removePasswordAdvice(UserDetails user) {
-
-		}
-	};
-
 	@Override
 	@NonNull
 	public ChangePasswordAdvice loadPasswordAdvice(HttpServletRequest request) {
 		return new DeferredChangePasswordAdvice(() -> {
 			ChangePasswordAdvice advice = (ChangePasswordAdvice) request.getSession().getAttribute(PASSWORD_ADVICE_ATTRIBUTE_NAME);
-			if (advice != null) {
-				return advice;
-			}
-			Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-			if (authentication != null) {
-				UserDetails user = (UserDetails) authentication.getPrincipal();
-				advice = this.advice.loadPasswordAdvice(user);
-			}
 			if (advice != null) {
 				return advice;
 			}
@@ -75,25 +50,11 @@ public class HttpSessionChangePasswordAdviceRepository implements ChangePassword
 			return;
 		}
 		request.getSession().setAttribute(PASSWORD_ADVICE_ATTRIBUTE_NAME, advice);
-		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-		if (authentication != null) {
-			UserDetails user = (UserDetails) authentication.getPrincipal();
-			this.advice.savePasswordAdvice(user, advice);
-		}
 	}
 
 	@Override
 	public void removePasswordAdvice(HttpServletRequest request, HttpServletResponse response) {
 		request.getSession().removeAttribute(PASSWORD_ADVICE_ATTRIBUTE_NAME);
-		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-		if (authentication != null) {
-			UserDetails user = (UserDetails) authentication.getPrincipal();
-			this.advice.removePasswordAdvice(user);
-		}
-	}
-
-	public void setChangePasswordAdviceService(ChangePasswordAdviceService advice) {
-		this.advice = advice;
 	}
 
 	private static final class DeferredChangePasswordAdvice implements ChangePasswordAdvice {

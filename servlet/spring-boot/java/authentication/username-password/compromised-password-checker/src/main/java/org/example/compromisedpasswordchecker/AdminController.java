@@ -21,6 +21,7 @@ import java.net.URI;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.provisioning.UserDetailsManager;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -30,10 +31,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/admin/passwords")
 @RestController
 public class AdminController {
-	private final UserDetailsService users;
+	private final UserDetailsManager users;
 	private final ChangePasswordAdviceService advice;
 
-	public AdminController(UserDetailsService users, ChangePasswordAdviceService advice) {
+	public AdminController(UserDetailsManager users, ChangePasswordAdviceService advice) {
 		this.users = users;
 		this.advice = advice;
 	}
@@ -58,5 +59,15 @@ public class AdminController {
 		this.advice.savePasswordAdvice(user, advice);
 		URI uri = URI.create("/admin/passwords/advice/" + username);
 		return ResponseEntity.created(uri).body(advice);
+	}
+
+	@PostMapping("/change")
+	public ResponseEntity<?> changePassword(ChangePassword change) {
+		this.users.changePassword(null, change.password());
+		return ResponseEntity.ok().build();
+	}
+
+	record ChangePassword(String username, String password) {
+
 	}
 }

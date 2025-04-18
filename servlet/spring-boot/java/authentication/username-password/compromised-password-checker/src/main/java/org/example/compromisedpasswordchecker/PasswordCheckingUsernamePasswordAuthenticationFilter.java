@@ -30,7 +30,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 
 public class PasswordCheckingUsernamePasswordAuthenticationFilter extends UsernamePasswordAuthenticationFilter {
-	private final ChangePasswordAdvisor checker = new ChangeCompromisedPasswordAdvisor();
+	private ChangePasswordAdvisor checker = new ChangeCompromisedPasswordAdvisor();
 	private ChangePasswordAdviceRepository repository = new HttpSessionChangePasswordAdviceRepository();
 
 	public PasswordCheckingUsernamePasswordAuthenticationFilter(AuthenticationManager authenticationManager) {
@@ -47,7 +47,7 @@ public class PasswordCheckingUsernamePasswordAuthenticationFilter extends Userna
 		super.successfulAuthentication(request, response, chain, authResult);
 	}
 
-	public void setChangePasswordAdviceRepository(ChangePasswordAdviceRepository advice) {
-		this.repository = advice;
+	public void setChangePasswordAdvisor(ChangePasswordAdvisor advice) {
+		this.checker = advice;
 	}
 }
