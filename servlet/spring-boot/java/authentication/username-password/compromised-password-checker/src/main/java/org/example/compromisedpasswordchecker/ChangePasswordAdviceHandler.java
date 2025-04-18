@@ -23,7 +23,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-public interface PasswordAdviceHandler {
+public interface ChangePasswordAdviceHandler {
 	void handle(HttpServletRequest request, HttpServletResponse response, FilterChain chain, ChangePasswordAdvice advice)
 		throws ServletException, IOException;
 }

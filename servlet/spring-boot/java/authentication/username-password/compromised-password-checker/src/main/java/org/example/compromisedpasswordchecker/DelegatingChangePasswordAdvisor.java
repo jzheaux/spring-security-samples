@@ -27,7 +27,7 @@ public class DelegatingChangePasswordAdvisor implements ChangePasswordAdvisor {
 
 	@Override
 	public ChangePasswordAdvice advise(ChangePasswordAdviceRequest request) {
-		ChangePasswordAdvice.Builder builder = ChangePasswordAdvice.builder();
+		DefaultChangePasswordAdvice.Builder builder = DefaultChangePasswordAdvice.builder();
 		for (ChangePasswordAdvisor advisor : this.advisors) {
 			ChangePasswordAdvice advice = advisor.advise(request);
 			if (advice != null) {

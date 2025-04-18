@@ -16,72 +16,37 @@
 
 package org.example.compromisedpasswordchecker;
 
-import java.util.ArrayList;
 import java.util.List;
 
-public final class ChangePasswordAdvice {
-	public static final ChangePasswordAdvice KEEP = new ChangePasswordAdvice();
+public interface ChangePasswordAdvice {
 
-	private final List<ChangePasswordReason> reasonsThatRequireResetting;
-	private final List<ChangePasswordReason> reasonsThatRecommendResetting;
-
-	private ChangePasswordAdvice() {
-		this.reasonsThatRequireResetting = new ArrayList<>();
-		this.reasonsThatRecommendResetting = new ArrayList<>();
+	enum Action {
+		KEEP, CHANGE, REQUIRE_CHANGE
 	}
 
-	public ChangePasswordAdvice(List<ChangePasswordReason> reasonsThatRequireResetting,
-								List<ChangePasswordReason> reasonsThatRecommendResetting) {
-		this.reasonsThatRequireResetting = reasonsThatRequireResetting;
-		this.reasonsThatRecommendResetting = reasonsThatRecommendResetting;
-	}
-
-	public boolean requiresReset() {
-		return !this.reasonsThatRequireResetting.isEmpty();
-	}
-
-	public boolean recommendsReset()  {
-		return !requiresReset() && !this.reasonsThatRecommendResetting.isEmpty();
-	}
-
-	public static ChangePasswordAdvice require(ChangePasswordReason reason) {
-		return builder().require(reason).build();
-	}
-
-	public static ChangePasswordAdvice recommend(ChangePasswordReason reason) {
-		return builder().recommend(reason).build();
-	}
-
-	public static Builder builder() {
-		return new Builder();
-	}
-
-	public static final class Builder {
-		List<ChangePasswordReason> reasonsThatRequireResetting = new ArrayList<>();
-		List<ChangePasswordReason> reasonsThatRecommendResetting = new ArrayList<>();
-
-		private Builder() {
-
+	default Action getAction() {
+		if (!getRequireChangeReasons().isEmpty()) {
+			return Action.REQUIRE_CHANGE;
 		}
-
-		public Builder require(ChangePasswordReason reason) {
-			this.reasonsThatRequireResetting.add(reason);
-			return this;
+		if (!getChangeReasons().isEmpty()) {
+			return Action.CHANGE;
 		}
+		return Action.KEEP;
+	}
 
-		public Builder recommend(ChangePasswordReason reason) {
-			this.reasonsThatRecommendResetting.add(reason);
-			return this;
-		}
+	List<ChangePasswordReason> getRequireChangeReasons();
 
-		public Builder advice(ChangePasswordAdvice advice) {
-			this.reasonsThatRequireResetting.addAll(advice.reasonsThatRequireResetting);
-			this.reasonsThatRecommendResetting.addAll(advice.reasonsThatRecommendResetting);
-			return this;
-		}
+	List<ChangePasswordReason> getChangeReasons();
 
-		public ChangePasswordAdvice build() {
-			return new ChangePasswordAdvice(this.reasonsThatRequireResetting, this.reasonsThatRecommendResetting);
-		}
+	static ChangePasswordAdvice keep() {
+		return new DefaultChangePasswordAdvice();
+	}
+
+	static ChangePasswordAdvice require(ChangePasswordReason reason) {
+		return DefaultChangePasswordAdvice.builder().require(reason).build();
+	}
+
+	static ChangePasswordAdvice recommend(ChangePasswordReason reason) {
+		return DefaultChangePasswordAdvice.builder().recommend(reason).build();
 	}
 }

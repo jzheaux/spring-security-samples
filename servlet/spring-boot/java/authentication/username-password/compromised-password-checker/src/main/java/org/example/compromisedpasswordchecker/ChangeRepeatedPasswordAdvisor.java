@@ -40,7 +40,7 @@ public class ChangeRepeatedPasswordAdvisor implements ChangePasswordAdvisor {
 		if (this.passwordEncoder.matches(request.password(), withPassword.getPassword())) {
 			return ChangePasswordAdvice.require(ChangePasswordReason.REPEATED);
 		}
-		return ChangePasswordAdvice.KEEP;
+		return ChangePasswordAdvice.keep();
 	}
 
 	public void setPasswordEncoder(PasswordEncoder passwordEncoder) {

@@ -30,7 +30,7 @@ import org.springframework.security.web.savedrequest.RequestCache;
 import org.springframework.security.web.util.matcher.AnyRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 
-public class SimplePasswordAdviceHandler implements PasswordAdviceHandler {
+public class SimpleChangePasswordAdviceHandler implements ChangePasswordAdviceHandler {
 	private final RedirectStrategy redirectStrategy = new DefaultRedirectStrategy();
 	private final RequestCache cache = new NullRequestCache();
 	private RequestMatcher requestMatcher = AnyRequestMatcher.INSTANCE;
@@ -42,7 +42,7 @@ public class SimplePasswordAdviceHandler implements PasswordAdviceHandler {
 			return;
 		}
 		// request matcher to decide whether to check
-		if (advice.requiresReset()) {
+		if (advice.getAction() == ChangePasswordAdvice.Action.REQUIRE_CHANGE) {
 			this.cache.saveRequest(request, response);
 			this.redirectStrategy.sendRedirect(request, response, "/reset-password");
 			return;

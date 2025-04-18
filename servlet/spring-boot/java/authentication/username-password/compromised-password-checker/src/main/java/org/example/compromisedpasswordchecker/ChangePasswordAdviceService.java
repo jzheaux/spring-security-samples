@@ -16,13 +16,12 @@
 
 package org.example.compromisedpasswordchecker;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.security.core.userdetails.UserDetails;
 
-public interface PasswordAdviceRepository {
-	ChangePasswordAdvice loadPasswordAdvice(HttpServletRequest request);
+public interface ChangePasswordAdviceService {
+	ChangePasswordAdvice loadPasswordAdvice(UserDetails user);
 
-	void savePasswordAdvice(HttpServletRequest request, HttpServletResponse response, ChangePasswordAdvice advice);
+	void savePasswordAdvice(UserDetails user, ChangePasswordAdvice advice);
 
-	void removePasswordAdvice(HttpServletRequest request, HttpServletResponse response);
+	void removePasswordAdvice(UserDetails user);
 }

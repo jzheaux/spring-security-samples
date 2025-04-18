@@ -9,8 +9,8 @@ public class ChangeCompromisedPasswordAdvisor implements ChangePasswordAdvisor {
 	@Override
 	public ChangePasswordAdvice advise(ChangePasswordAdviceRequest request) {
 		return this.pwned.check(request.password()).isCompromised() ?
-			ChangePasswordAdvice.builder().require(ChangePasswordReason.COMPROMISED).build() :
-			ChangePasswordAdvice.KEEP;
+			DefaultChangePasswordAdvice.builder().recommend(ChangePasswordReason.COMPROMISED).build() :
+			ChangePasswordAdvice.keep();
 	}
 
 }

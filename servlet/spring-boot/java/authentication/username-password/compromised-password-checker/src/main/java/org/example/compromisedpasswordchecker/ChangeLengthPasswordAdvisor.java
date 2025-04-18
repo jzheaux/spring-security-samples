@@ -37,6 +37,6 @@ public class ChangeLengthPasswordAdvisor implements ChangePasswordAdvisor {
 		if (request.password().length() > this.maxLength) {
 			return ChangePasswordAdvice.recommend(ChangePasswordReason.TOO_LONG);
 		}
-		return ChangePasswordAdvice.KEEP;
+		return ChangePasswordAdvice.keep();
 	}
 }

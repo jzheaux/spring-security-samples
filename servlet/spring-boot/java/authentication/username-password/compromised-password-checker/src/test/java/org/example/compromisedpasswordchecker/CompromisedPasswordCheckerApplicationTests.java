@@ -16,15 +16,65 @@
 
 package org.example.compromisedpasswordchecker;
 
+import java.util.UUID;
+
 import org.junit.jupiter.api.Test;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.mock.web.MockHttpSession;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
+
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
+@AutoConfigureMockMvc
 class CompromisedPasswordCheckerApplicationTests {
 
+	@Autowired
+	MockMvc mvc;
+
 	@Test
-	void contextLoads() {
+	@WithMockUser(username = "admin", roles = "ADMIN")
+	void whenAdminSetsExpiredAdviceThenUserLoginRedirectsToResetPassword() throws Exception {
+		this.mvc.perform(get("/"))
+			.andExpect(status().isOk());
+		this.mvc.perform(post("/admin/passwords/expire/admin").with(csrf()))
+			.andExpect(status().isCreated())
+			.andExpect(jsonPath("$.action").value("REQUIRE_CHANGE"));
+		this.mvc.perform(get("/"))
+			.andExpect(status().isFound())
+			.andExpect(redirectedUrl("/reset-password"));
+		this.mvc.perform(post("/reset-password").with(csrf())
+				.param("newPassword", UUID.randomUUID().toString()))
+			.andExpect(status().isFound())
+			.andExpect(redirectedUrl("/"));
+		this.mvc.perform(get("/admin/passwords/advice/admin"))
+			.andExpect(status().isOk());
+	}
+
+	@Test
+	void whenTooLongAdviceThenUserLoginAllowed() throws Exception {
+		MvcResult result = this.mvc.perform(post("/login").with(csrf())
+				.param("username", "compromised")
+				.param("password", "password"))
+			.andExpect(status().isFound())
+			.andExpect(redirectedUrl("/"))
+			.andReturn();
+		MockHttpSession session = (MockHttpSession) result.getRequest().getSession();
+		this.mvc.perform(get("/").session(session))
+			.andExpect(status().isOk())
+			.andExpect(request().attribute("compromised", true));
 	}
 
 }

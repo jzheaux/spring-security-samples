@@ -31,7 +31,7 @@ import org.springframework.security.web.context.HttpSessionSecurityContextReposi
 
 public class PasswordCheckingUsernamePasswordAuthenticationFilter extends UsernamePasswordAuthenticationFilter {
 	private final ChangePasswordAdvisor checker = new ChangeCompromisedPasswordAdvisor();
-	private final PasswordAdviceRepository repository = new HttpSessionPasswordAdviceRepository();
+	private ChangePasswordAdviceRepository repository = new HttpSessionChangePasswordAdviceRepository();
 
 	public PasswordCheckingUsernamePasswordAuthenticationFilter(AuthenticationManager authenticationManager) {
 		super(authenticationManager);
@@ -47,4 +47,7 @@ public class PasswordCheckingUsernamePasswordAuthenticationFilter extends Userna
 		super.successfulAuthentication(request, response, chain, authResult);
 	}
 
+	public void setChangePasswordAdviceRepository(ChangePasswordAdviceRepository advice) {
+		this.repository = advice;
+	}
 }

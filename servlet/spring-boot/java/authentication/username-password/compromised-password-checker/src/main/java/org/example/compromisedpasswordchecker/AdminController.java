@@ -16,40 +16,47 @@
 
 package org.example.compromisedpasswordchecker;
 
-import java.util.Map;
+import java.net.URI;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.servlet.ModelAndView;
+import org.springframework.web.bind.annotation.RestController;
 
-@RequestMapping("/admin")
-@Controller
+@RequestMapping("/admin/passwords")
+@RestController
 public class AdminController {
 	private final UserDetailsService users;
-	private final ChangePasswordService passwords;
+	private final ChangePasswordAdviceService advice;
 
-	public AdminController(UserDetailsService users, ChangePasswordService passwords) {
+	public AdminController(UserDetailsService users, ChangePasswordAdviceService advice) {
 		this.users = users;
-		this.passwords = passwords;
+		this.advice = advice;
 	}
 
-	@GetMapping("/passwords/requireChange")
-	public String requireChangePassword() {
-		return "require-change-password";
-	}
-
-	@PostMapping("/passwords/requireChange")
-	public ModelAndView requireChangePassword(@RequestParam("username") String username) {
+	@GetMapping("/advice/{username}")
+	public ResponseEntity<ChangePasswordAdvice> requireChangePassword(@PathVariable("username") String username) {
 		UserDetails user = this.users.loadUserByUsername(username);
 		if (user == null) {
-			return new ModelAndView("require-change-password", Map.of("status", "User not found :("));
+			return ResponseEntity.notFound().build();
 		}
-		this.passwords.savePasswordAdvice(user, ChangePasswordAdvice.require(ChangePasswordReason.EXPIRED));
-		return new ModelAndView("require-change-password", Map.of("status", "Success!"));
+		ChangePasswordAdvice advice = this.advice.loadPasswordAdvice(user);
+		return ResponseEntity.ok(advice);
+	}
+
+	@PostMapping(value="/expire/{username}")
+	public ResponseEntity<ChangePasswordAdvice> expirePassword(@PathVariable("username") String username) {
+		UserDetails user = this.users.loadUserByUsername(username);
+		if (user == null) {
+			return ResponseEntity.notFound().build();
+		}
+		ChangePasswordAdvice advice = ChangePasswordAdvice.require(ChangePasswordReason.EXPIRED);
+		this.advice.savePasswordAdvice(user, advice);
+		URI uri = URI.create("/admin/passwords/advice/" + username);
+		return ResponseEntity.created(uri).body(advice);
 	}
 }

@@ -22,6 +22,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.example.compromisedpasswordchecker.ChangePasswordAdvisor.ChangeUpdatedPasswordAdviceRequest;
 
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -47,11 +48,10 @@ import org.springframework.security.web.servlet.util.matcher.PathPatternRequestM
 import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-public class PasswordResetProcessingFilter extends OncePerRequestFilter {
+public class ChangePasswordProcessingFilter extends OncePerRequestFilter {
 	private final RequestMatcher requestMatcher = PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/reset-password");
 	private final ChangePasswordAdvisor advisor = new ChangeCompromisedPasswordAdvisor();
 	private final PasswordEncoder encoder = PasswordEncoderFactories.createDelegatingPasswordEncoder();
-	private final PasswordAdviceRepository repository = new HttpSessionPasswordAdviceRepository();
 	private final AuthenticationEntryPoint entryPoint = new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED);
 	private final AuthorizationManager<RequestAuthorizationContext> authorizationManager =
 		AuthenticatedAuthorizationManager.authenticated();
@@ -60,8 +60,10 @@ public class PasswordResetProcessingFilter extends OncePerRequestFilter {
 
 	private final UserDetailsPasswordService passwords;
 
-	public PasswordResetProcessingFilter(UserDetailsPasswordService manager) {
-		this.passwords = manager;
+	private ChangePasswordAdviceRepository repository = new HttpSessionChangePasswordAdviceRepository();
+
+	public ChangePasswordProcessingFilter(UserDetailsPasswordService passwords) {
+		this.passwords = passwords;
 	}
 
 	@Override
@@ -92,15 +94,15 @@ public class PasswordResetProcessingFilter extends OncePerRequestFilter {
 			return;
 		}
 		UserDetails user = (UserDetails) authentication.getPrincipal();
-		ChangePasswordAdvice advice = this.advisor.advise(new ChangePasswordAdvisor.ChangeUpdatedPasswordAdviceRequest(user, password));
-		if (advice == ChangePasswordAdvice.KEEP) {
+		ChangePasswordAdvice advice = this.advisor.adviseUpdatedPassword(user, password);
+		if (advice.getAction() == ChangePasswordAdvice.Action.KEEP) {
 			this.passwords.updatePassword(user, this.encoder.encode(password));
-			this.repository.removePasswordAdvice(request, response);
-		} else {
-			this.repository.savePasswordAdvice(request, response, advice);
 		}
+		this.repository.savePasswordAdvice(request, response, advice);
 		this.successHandler.onAuthenticationSuccess(request, response, authentication);
 	}
 
-
+	public void setChangePasswordAdviceRepository(ChangePasswordAdviceRepository advice) {
+		this.repository = advice;
+	}
 }

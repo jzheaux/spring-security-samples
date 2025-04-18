@@ -47,7 +47,7 @@ public class SecurityConfig implements WebMvcConfigurer {
 
 	@Override
 	public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
-		resolvers.add(new PasswordAdviceMethodArgumentResolver());
+		resolvers.add(new ChangePasswordAdviceMethodArgumentResolver());
 	}
 
 	@Bean
@@ -75,7 +75,7 @@ public class SecurityConfig implements WebMvcConfigurer {
 		String tooLongPassword = "{bcrypt}$2a$10$ZI9RHDidWWbUJ38noohrsOUEDod2v15BEa.3gpQQ5kUoDWKr3yOD6";
 		String adminPassword = "{bcrypt}$2a$10$O7yxTCDZXQ0H6G2dLZpMS.a0e4Lfv1t4/JhHjrsL5BAk4.ZkT.fyG";
 
-		UserDetails compromised = User.withUsername("compromised").password("password").roles("USER").build();
+		UserDetails compromised = User.withUsername("compromised").password("{noop}password").roles("USER").build();
 		UserDetails tooLong = User.withUsername("toolong").password(tooLongPassword).roles("USER").build();
 		UserDetails admin = User.withUsername("admin").password(adminPassword).roles("ADMIN").build();
 
@@ -83,28 +83,40 @@ public class SecurityConfig implements WebMvcConfigurer {
 	}
 
 	@Bean
-	Customizer<HttpSecurity> passwordResetFilter(UserDetailsPasswordService passwords) {
+	Customizer<HttpSecurity> passwordResetFilter(UserDetailsPasswordService passwords, ChangePasswordAdviceRepository advice) {
+		ChangePasswordProcessingFilter processing = new ChangePasswordProcessingFilter(passwords);
+		processing.setChangePasswordAdviceRepository(advice);
+		ChangePasswordAdvisingFilter advising = new ChangePasswordAdvisingFilter();
+		advising.setChangePasswordAdviceRepository(advice);
 		return (http) -> http
-			.addFilterBefore(new DefaultPasswordResetPageGeneratingFilter(), UsernamePasswordAuthenticationFilter.class)
-			.addFilterBefore(new PasswordResetProcessingFilter(passwords), UsernamePasswordAuthenticationFilter.class)
+			.addFilterBefore(new DefaultChangePasswordPageGeneratingFilter(), UsernamePasswordAuthenticationFilter.class)
+			.addFilterBefore(processing, UsernamePasswordAuthenticationFilter.class)
 			// TODO: does this prevent logout?
-			.addFilterBefore(new PasswordAdvisingFilter(), UsernamePasswordAuthenticationFilter.class);
+			.addFilterBefore(advising, UsernamePasswordAuthenticationFilter.class);
 	}
 
 	@Bean
-	Customizer<HttpSecurity> usernamePasswordFilter(AuthenticationManager authenticationManager) {
+	Customizer<HttpSecurity> usernamePasswordFilter(AuthenticationManager authenticationManager, ChangePasswordAdviceRepository advice) {
 		PasswordCheckingUsernamePasswordAuthenticationFilter filter =
 			new PasswordCheckingUsernamePasswordAuthenticationFilter(authenticationManager);
+		filter.setChangePasswordAdviceRepository(advice);
 		return (http) -> http.addFilterAt(filter, UsernamePasswordAuthenticationFilter.class);
 	}
 
 	@Bean
-	ChangePasswordService changePasswordService() {
-		return new InMemoryChangePasswordService();
+	ChangePasswordAdviceRepository changePasswordAdviceRepository(ChangePasswordAdviceService advice) {
+		HttpSessionChangePasswordAdviceRepository repository = new HttpSessionChangePasswordAdviceRepository();
+		repository.setChangePasswordAdviceService(advice);
+		return repository;
 	}
 
 	@Bean
-	ChangePasswordAdvisor changePasswordAdvisor(UserDetailsService users, ChangePasswordService passwords) {
+	ChangePasswordAdviceService changePasswordService() {
+		return new InMemoryChangePasswordAdviceService();
+	}
+
+	@Bean
+	ChangePasswordAdvisor changePasswordAdvisor(UserDetailsService users, ChangePasswordAdviceService passwords) {
 		return new DelegatingChangePasswordAdvisor(List.of(
 			new ChangeCompromisedPasswordAdvisor(),
 			new ChangeRepeatedPasswordAdvisor(users),

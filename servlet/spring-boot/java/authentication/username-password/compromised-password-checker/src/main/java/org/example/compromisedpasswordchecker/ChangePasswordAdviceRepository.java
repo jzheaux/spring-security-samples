@@ -17,17 +17,12 @@
 package org.example.compromisedpasswordchecker;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
-import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
+public interface ChangePasswordAdviceRepository {
+	ChangePasswordAdvice loadPasswordAdvice(HttpServletRequest request);
 
-@Controller
-public class HomeController {
-	@GetMapping
-	public String index(ChangePasswordAdvice advice, HttpServletRequest request) {
-		if (advice.getAction() == ChangePasswordAdvice.Action.CHANGE) {
-			request.setAttribute("compromised", true);
-		}
-		return "index";
-	}
+	void savePasswordAdvice(HttpServletRequest request, HttpServletResponse response, ChangePasswordAdvice advice);
+
+	void removePasswordAdvice(HttpServletRequest request, HttpServletResponse response);
 }

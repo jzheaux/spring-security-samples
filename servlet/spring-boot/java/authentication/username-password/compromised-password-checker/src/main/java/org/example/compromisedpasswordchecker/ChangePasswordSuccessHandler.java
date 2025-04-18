@@ -16,12 +16,15 @@
 
 package org.example.compromisedpasswordchecker;
 
-import org.springframework.security.core.userdetails.UserDetails;
+import java.io.IOException;
 
-public interface ChangePasswordService {
-	ChangePasswordAdvice loadPasswordAdvice(UserDetails user);
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
-	void savePasswordAdvice(UserDetails user, ChangePasswordAdvice advice);
+import org.springframework.security.core.Authentication;
 
-	void removePasswordAdvice(UserDetails user);
+public interface ChangePasswordSuccessHandler {
+	void onChangePasswordSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication)
+		throws ServletException, IOException;
 }

@@ -29,7 +29,7 @@ import org.springframework.security.web.servlet.util.matcher.PathPatternRequestM
 import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-public class DefaultPasswordResetPageGeneratingFilter extends OncePerRequestFilter {
+public class DefaultChangePasswordPageGeneratingFilter extends OncePerRequestFilter {
 	private RequestMatcher requestMatcher = PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.GET, "/reset-password");
 
 	@Override

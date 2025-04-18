@@ -17,14 +17,14 @@
 package org.example.compromisedpasswordchecker;
 
 public class ChangePasswordServiceAdvisor implements ChangePasswordAdvisor {
-	private final ChangePasswordService changePasswordService;
+	private final ChangePasswordAdviceService changePasswordAdviceService;
 
-	public ChangePasswordServiceAdvisor(ChangePasswordService changePasswordService) {
-		this.changePasswordService = changePasswordService;
+	public ChangePasswordServiceAdvisor(ChangePasswordAdviceService changePasswordAdviceService) {
+		this.changePasswordAdviceService = changePasswordAdviceService;
 	}
 
 	@Override
 	public ChangePasswordAdvice advise(ChangePasswordAdviceRequest request) {
-		return this.changePasswordService.loadPasswordAdvice(request.userDetails());
+		return this.changePasswordAdviceService.loadPasswordAdvice(request.userDetails());
 	}
 }

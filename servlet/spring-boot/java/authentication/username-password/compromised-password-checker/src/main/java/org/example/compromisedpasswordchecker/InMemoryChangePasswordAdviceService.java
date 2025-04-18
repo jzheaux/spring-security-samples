@@ -22,7 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.util.Assert;
 
-public final class InMemoryChangePasswordService implements ChangePasswordService {
+public final class InMemoryChangePasswordAdviceService implements ChangePasswordAdviceService {
 	private final Map<String, ChangePasswordAdvice> advice = new ConcurrentHashMap<>();
 
 	@Override
