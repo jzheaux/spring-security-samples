@@ -1,0 +1,6 @@
+= Step-Up Authorization
+
+1. Login as `username/password`. You should see the home page.
+2. Navigate to `/profile`, you should be redirected to login again.
+3. Login as `username/password`. You should see the profile page.
+4. Wait for one minute, then refresh the page. You should be redirected to login again.

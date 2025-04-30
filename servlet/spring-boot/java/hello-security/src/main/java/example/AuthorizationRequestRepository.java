@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2024 the original author or authors.
+ * Copyright 2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,24 +16,13 @@
 
 package example;
 
-import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
-/**
- * Controller for "/".
- *
- * @author Joe Grandja
- */
-@Controller
-public class IndexController {
+public interface AuthorizationRequestRepository {
+	AuthorizationRequest loadAuthorizationRequest(HttpServletRequest request);
 
-	@GetMapping("/")
-	public String index() {
-		return "index";
-	}
+	void saveAuthorizationRequest(HttpServletRequest request, HttpServletResponse response, AuthorizationRequest authorizationRequest);
 
-	@GetMapping("/profile")
-	public String profile() {
-		return "profile";
-	}
+	AuthorizationRequest removeAuthorizationRequest(HttpServletRequest request);
 }

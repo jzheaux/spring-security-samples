@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2024 the original author or authors.
+ * Copyright 2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,24 +16,28 @@
 
 package example;
 
-import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
+import java.time.Instant;
 
-/**
- * Controller for "/".
- *
- * @author Joe Grandja
- */
-@Controller
-public class IndexController {
+import org.springframework.security.core.GrantedAuthority;
 
-	@GetMapping("/")
-	public String index() {
-		return "index";
+public class RevocableGrantedAuthority implements GrantedAuthority {
+
+	private final String authority;
+
+	private final Instant expiresAt;
+
+	public RevocableGrantedAuthority(String authority, Instant expiresAt) {
+		this.authority = authority;
+		this.expiresAt = expiresAt;
 	}
 
-	@GetMapping("/profile")
-	public String profile() {
-		return "profile";
+	@Override
+	public String getAuthority() {
+		return this.authority;
 	}
+
+	public boolean isRevoked() {
+		return this.expiresAt.isBefore(Instant.now());
+	}
+
 }
