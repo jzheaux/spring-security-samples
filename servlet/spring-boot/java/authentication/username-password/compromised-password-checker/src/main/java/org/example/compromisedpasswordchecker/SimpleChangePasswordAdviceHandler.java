@@ -29,6 +29,7 @@ import org.springframework.security.web.savedrequest.NullRequestCache;
 import org.springframework.security.web.savedrequest.RequestCache;
 import org.springframework.security.web.util.matcher.AnyRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
+import org.springframework.util.Assert;
 
 public class SimpleChangePasswordAdviceHandler implements ChangePasswordAdviceHandler {
 	private final RedirectStrategy redirectStrategy = new DefaultRedirectStrategy();
@@ -39,6 +40,7 @@ public class SimpleChangePasswordAdviceHandler implements ChangePasswordAdviceHa
 	private RequestMatcher requestMatcher = AnyRequestMatcher.INSTANCE;
 
 	public SimpleChangePasswordAdviceHandler(String changePasswordUrl) {
+		Assert.hasText(changePasswordUrl, "changePasswordUrl cannot be empty");
 		this.changePasswordUrl = changePasswordUrl;
 	}
 

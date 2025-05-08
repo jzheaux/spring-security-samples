@@ -21,11 +21,14 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.context.SecurityContextHolderStrategy;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.util.Assert;
 
 public final class ChangePasswordAdviceServiceRepository implements ChangePasswordAdviceRepository {
 	private final ChangePasswordAdviceService changePasswordAdviceService;
+
+	private SecurityContextHolderStrategy securityContextHolderStrategy = SecurityContextHolder.getContextHolderStrategy();
 
 	public ChangePasswordAdviceServiceRepository(ChangePasswordAdviceService changePasswordAdviceService) {
 		Assert.notNull(changePasswordAdviceService, "changePasswordAdviceService cannot be null");
@@ -35,13 +38,25 @@ public final class ChangePasswordAdviceServiceRepository implements ChangePasswo
 	@Override
 	public ChangePasswordAdvice loadPasswordAdvice(HttpServletRequest request) {
 		UserDetails user = getUser();
-		return this.changePasswordAdviceService.loadPasswordAdvice(user);
+		if (user == null) {
+			return ChangePasswordAdvice.keep();
+		}
+		ChangePasswordAdvice advice = this.changePasswordAdviceService.loadPasswordAdvice(user);
+		return (advice != null) ? advice : ChangePasswordAdvice.keep();
 	}
 
 	@Override
 	public void savePasswordAdvice(HttpServletRequest request, HttpServletResponse response, ChangePasswordAdvice advice) {
 		UserDetails user = getUser();
 		Assert.notNull(user, "could not find user and so cannot save advice");
+		if (advice == null) {
+			this.changePasswordAdviceService.removePasswordAdvice(user);
+			return;
+		}
+		if (ChangePasswordAdvice.keep().equals(advice)) {
+			this.changePasswordAdviceService.removePasswordAdvice(user);
+			return;
+		}
 		this.changePasswordAdviceService.savePasswordAdvice(user, advice);
 	}
 
@@ -61,5 +76,9 @@ public final class ChangePasswordAdviceServiceRepository implements ChangePasswo
 			return null;
 		}
 		return user;
+	}
+
+	public void setSecurityContextHolderStrategy(SecurityContextHolderStrategy securityContextHolderStrategy) {
+		this.securityContextHolderStrategy = securityContextHolderStrategy;
 	}
 }

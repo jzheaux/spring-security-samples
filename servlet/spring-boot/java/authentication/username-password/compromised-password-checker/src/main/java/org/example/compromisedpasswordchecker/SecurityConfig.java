@@ -34,11 +34,18 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration(proxyBeanMethods = false)
 @EnableWebSecurity
-public class SecurityConfig implements WebMvcConfigurer {
+public class SecurityConfig {
 
-	@Override
-	public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
-		resolvers.add(new ChangePasswordAdviceMethodArgumentResolver());
+	@Bean
+	WebMvcConfigurer argumentResolvers(ChangePasswordAdviceRepository changePasswordAdviceRepository) {
+		return new WebMvcConfigurer() {
+			@Override
+			public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
+				ChangePasswordAdviceMethodArgumentResolver resolver = new ChangePasswordAdviceMethodArgumentResolver();
+				resolver.setChangePasswordAdviceRepository(changePasswordAdviceRepository);
+				resolvers.add(resolver);
+			}
+		};
 	}
 
 	@Bean
@@ -49,6 +56,7 @@ public class SecurityConfig implements WebMvcConfigurer {
 				.requestMatchers("/admin/**").hasRole("ADMIN")
 				.anyRequest().authenticated()
 			)
+			.formLogin(Customizer.withDefaults())
 			.with(new PasswordManagementConfigurer<>(context), Customizer.withDefaults());
 		// @formatter:on
 		return http.build();

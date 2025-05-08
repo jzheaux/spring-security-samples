@@ -16,6 +16,7 @@
 
 package org.example.compromisedpasswordchecker;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.function.Supplier;
 
@@ -23,9 +24,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.lang.NonNull;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.util.function.SingletonSupplier;
 
 public class HttpSessionChangePasswordAdviceRepository implements ChangePasswordAdviceRepository {
@@ -65,12 +63,12 @@ public class HttpSessionChangePasswordAdviceRepository implements ChangePassword
 		}
 
 		@Override
-		public List<ChangePasswordReason> getRequireChangeReasons() {
+		public Collection<ChangePasswordReason> getRequireChangeReasons() {
 			return this.advice.get().getRequireChangeReasons();
 		}
 
 		@Override
-		public List<ChangePasswordReason> getChangeReasons() {
+		public Collection<ChangePasswordReason> getChangeReasons() {
 			return this.advice.get().getChangeReasons();
 		}
 	}

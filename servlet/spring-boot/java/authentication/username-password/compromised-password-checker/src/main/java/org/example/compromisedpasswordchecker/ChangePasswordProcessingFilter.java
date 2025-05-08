@@ -32,6 +32,7 @@ import org.springframework.security.authorization.AuthorizationManager;
 import org.springframework.security.authorization.AuthorizationResult;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.context.SecurityContextHolderStrategy;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsPasswordService;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
@@ -59,10 +60,11 @@ public class ChangePasswordProcessingFilter extends OncePerRequestFilter {
 
 	private final UserDetailsPasswordService passwords;
 
+	private SecurityContextHolderStrategy securityContextHolderStrategy = SecurityContextHolder.getContextHolderStrategy();
 	private RequestMatcher requestMatcher = PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, DEFAULT_PASSWORD_CHANGE_PROCESSING_URL);
-	private ChangePasswordAdvisor advisor = new ChangeCompromisedPasswordAdvisor();
-	private PasswordEncoder passwordEncder = PasswordEncoderFactories.createDelegatingPasswordEncoder();
-	private ChangePasswordAdviceRepository repository = new HttpSessionChangePasswordAdviceRepository();
+	private ChangePasswordAdvisor changePasswordAdvisor = new ChangeCompromisedPasswordAdvisor();
+	private PasswordEncoder passwordEncoder = PasswordEncoderFactories.createDelegatingPasswordEncoder();
+	private ChangePasswordAdviceRepository changePasswordAdviceRepository = new HttpSessionChangePasswordAdviceRepository();
 
 	public ChangePasswordProcessingFilter(UserDetailsPasswordService passwords) {
 		this.passwords = passwords;
@@ -80,7 +82,7 @@ public class ChangePasswordProcessingFilter extends OncePerRequestFilter {
 			chain.doFilter(request, response);
 			return;
 		}
-		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		Authentication authentication = this.securityContextHolderStrategy.getContext().getAuthentication();
 		if (authentication == null) {
 			this.failureHandler.onAuthenticationFailure(request, response, new InsufficientAuthenticationException("Authentication required to change password"));
 			return;
@@ -96,27 +98,31 @@ public class ChangePasswordProcessingFilter extends OncePerRequestFilter {
 			return;
 		}
 		UserDetails user = (UserDetails) authentication.getPrincipal();
-		ChangePasswordAdvice advice = this.advisor.adviseUpdatedPassword(user, password);
-		this.repository.savePasswordAdvice(request, response, advice);
+		ChangePasswordAdvice advice = this.changePasswordAdvisor.adviseUpdatedPassword(user, password);
+		this.changePasswordAdviceRepository.savePasswordAdvice(request, response, advice);
 		if (advice.getAction() == ChangePasswordAdvice.Action.KEEP) {
-			this.passwords.updatePassword(user, this.passwordEncder.encode(password));
+			this.passwords.updatePassword(user, this.passwordEncoder.encode(password));
 		}
 		this.successHandler.onAuthenticationSuccess(request, response, authentication);
 	}
 
 	public void setChangePasswordAdviceRepository(ChangePasswordAdviceRepository advice) {
-		this.repository = advice;
+		this.changePasswordAdviceRepository = advice;
 	}
 
 	public void setChangePasswordAdvisor(ChangePasswordAdvisor advisor) {
-		this.advisor = advisor;
+		this.changePasswordAdvisor = advisor;
 	}
 
 	public void setRequestMatcher(RequestMatcher requestMatcher) {
 		this.requestMatcher = requestMatcher;
 	}
 
-	public void setPasswordEncoder(PasswordEncoder passwordEncder) {
-		this.passwordEncder = passwordEncder;
+	public void setPasswordEncoder(PasswordEncoder passwordEncoder) {
+		this.passwordEncoder = passwordEncoder;
+	}
+
+	public void setSecurityContextHolderStrategy(SecurityContextHolderStrategy securityContextHolderStrategy) {
+		this.securityContextHolderStrategy = securityContextHolderStrategy;
 	}
 }

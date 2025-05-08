@@ -55,17 +55,21 @@ public class DefaultChangePasswordPageGeneratingFilter extends OncePerRequestFil
 		<!DOCTYPE html>
 		<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="https://www.thymeleaf.org" lang="en">
 		<head>
-			<title>Hello Spring Security</title>
 			<meta charset="utf-8" />
+			<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+			<title>Change Your Password</title>
+			<link href="/default-ui.css" rel="stylesheet" />
 		</head>
 		<body>
-			<h3>Your password is compromised, please reset it:</h3>
-			<form th:action="/reset-password" method="post">
-				<label for="newPassword">New password</label>
-				<input type="password" id="newPassword" name="newPassword"> <br/>
-				<input type="hidden" name="{{parameter}}" value="{{value}}"/>
-				<input id="submit" type="submit" value="Submit"/>
-			</form>
+			<div class="content">
+				<h3>To change your password, provide your updated password below:</h3>
+				<form th:action="/change-password" method="post">
+					<label for="newPassword">New password</label>
+					<input type="password" id="newPassword" name="newPassword"> <br/>
+					<input type="hidden" name="{{parameter}}" value="{{value}}"/>
+					<input id="submit" type="submit" value="Submit"/>
+				</form>
+			</div>
 		</body>
 		</html>
 		""";

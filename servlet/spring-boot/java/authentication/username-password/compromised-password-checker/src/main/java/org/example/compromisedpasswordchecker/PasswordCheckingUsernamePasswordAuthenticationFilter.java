@@ -25,11 +25,15 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.context.SecurityContextHolderStrategy;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 
 public class PasswordCheckingUsernamePasswordAuthenticationFilter extends UsernamePasswordAuthenticationFilter {
+	private SecurityContextHolderStrategy securityContextHolderStrategy = SecurityContextHolder.getContextHolderStrategy();
 	private ChangePasswordAdvisor changePasswordAdvisor = new ChangeCompromisedPasswordAdvisor();
 	private ChangePasswordAdviceRepository changePasswordAdviceRepository = new HttpSessionChangePasswordAdviceRepository();
 
@@ -42,6 +46,9 @@ public class PasswordCheckingUsernamePasswordAuthenticationFilter extends Userna
 	protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response, FilterChain chain, Authentication authResult) throws IOException, ServletException {
 		String password = obtainPassword(request);
 		UserDetails user = (UserDetails) authResult.getPrincipal();
+		SecurityContext context = this.securityContextHolderStrategy.createEmptyContext();
+		context.setAuthentication(authResult);
+		this.securityContextHolderStrategy.setContext(context);
 		ChangePasswordAdvice advice = this.changePasswordAdvisor.adviseCurrentPassword(user, password);
 		this.changePasswordAdviceRepository.savePasswordAdvice(request, response, advice);
 		super.successfulAuthentication(request, response, chain, authResult);
@@ -53,5 +60,11 @@ public class PasswordCheckingUsernamePasswordAuthenticationFilter extends Userna
 
 	public void setChangePasswordAdviceRepository(ChangePasswordAdviceRepository changePasswordAdviceRepository) {
 		this.changePasswordAdviceRepository = changePasswordAdviceRepository;
+	}
+
+	@Override
+	public void setSecurityContextHolderStrategy(SecurityContextHolderStrategy securityContextHolderStrategy) {
+		super.setSecurityContextHolderStrategy(securityContextHolderStrategy);
+		this.securityContextHolderStrategy = securityContextHolderStrategy;
 	}
 }

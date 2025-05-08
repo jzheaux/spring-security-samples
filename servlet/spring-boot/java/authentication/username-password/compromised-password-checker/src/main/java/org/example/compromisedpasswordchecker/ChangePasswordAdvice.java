@@ -16,7 +16,7 @@
 
 package org.example.compromisedpasswordchecker;
 
-import java.util.List;
+import java.util.Collection;
 
 public interface ChangePasswordAdvice {
 
@@ -34,19 +34,19 @@ public interface ChangePasswordAdvice {
 		return Action.KEEP;
 	}
 
-	List<ChangePasswordReason> getRequireChangeReasons();
+	Collection<ChangePasswordReason> getRequireChangeReasons();
 
-	List<ChangePasswordReason> getChangeReasons();
+	Collection<ChangePasswordReason> getChangeReasons();
 
 	static ChangePasswordAdvice keep() {
 		return new DefaultChangePasswordAdvice();
 	}
 
 	static ChangePasswordAdvice require(ChangePasswordReason reason) {
-		return DefaultChangePasswordAdvice.builder().require(reason).build();
+		return DefaultChangePasswordAdvice.builder().require((r) -> r.add(reason)).build();
 	}
 
 	static ChangePasswordAdvice recommend(ChangePasswordReason reason) {
-		return DefaultChangePasswordAdvice.builder().recommend(reason).build();
+		return DefaultChangePasswordAdvice.builder().recommend((r) -> r.add(reason)).build();
 	}
 }

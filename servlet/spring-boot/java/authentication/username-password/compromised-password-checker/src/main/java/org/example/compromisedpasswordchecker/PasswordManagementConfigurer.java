@@ -21,9 +21,13 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.web.HttpSecurityBuilder;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.annotation.web.configurers.FormLoginConfigurer;
+import org.springframework.security.core.context.SecurityContextHolderStrategy;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsPasswordService;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.authentication.SavedRequestAwareAuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 
@@ -36,7 +40,9 @@ public final class PasswordManagementConfigurer<H extends HttpSecurityBuilder<H>
 		this.context = context;
 	}
 
-	private String changePasswordUrl;
+	private boolean customChangePasswordPage = false;
+
+	private String changePasswordUrl = DefaultChangePasswordPageGeneratingFilter.DEFAULT_CHANGE_PASSWORD_URL;
 
 	private String changePasswordProcessingUrl = ChangePasswordProcessingFilter.DEFAULT_PASSWORD_CHANGE_PROCESSING_URL;
 
@@ -55,6 +61,7 @@ public final class PasswordManagementConfigurer<H extends HttpSecurityBuilder<H>
 
 	public PasswordManagementConfigurer<H> changePasswordUrl(String changePasswordUrl) {
 		this.changePasswordUrl = changePasswordUrl;
+		this.customChangePasswordPage = true;
 		return this;
 	}
 
@@ -79,9 +86,31 @@ public final class PasswordManagementConfigurer<H extends HttpSecurityBuilder<H>
 	}
 
 	@Override
-	public void init(H builder) throws Exception {
-		builder.setSharedObject(ChangePasswordAdviceRepository.class, this.changePasswordAdviceRepository);
-		builder.setSharedObject(ChangePasswordAdvisor.class, this.changePasswordAdvisor);
+	public void init(H http) throws Exception {
+
+
+		ChangePasswordAdviceRepository changePasswordAdviceRepository = (this.changePasswordAdviceRepository != null) ?
+			this.changePasswordAdviceRepository :
+			this.context.getBeanProvider(ChangePasswordAdviceRepository.class)
+				.getIfUnique(HttpSessionChangePasswordAdviceRepository::new);
+
+		ChangePasswordAdvisor changePasswordAdvisor = (this.changePasswordAdvisor != null) ?
+			this.changePasswordAdvisor :
+			this.context.getBeanProvider(ChangePasswordAdvisor.class)
+				.getIfUnique(ChangeCompromisedPasswordAdvisor::new);
+
+		http.setSharedObject(ChangePasswordAdviceRepository.class, changePasswordAdviceRepository);
+		http.setSharedObject(ChangePasswordAdvisor.class, changePasswordAdvisor);
+
+		SavedRequestAwareAuthenticationSuccessHandler successHandler = new SavedRequestAwareAuthenticationSuccessHandler();
+		http.getConfigurer(FormLoginConfigurer.class)
+			.successHandler((request, response, authentication) -> {
+				UserDetails user = (UserDetails) authentication.getPrincipal();
+				String password = request.getParameter("password");
+				ChangePasswordAdvice advice = changePasswordAdvisor.adviseCurrentPassword(user, password);
+				changePasswordAdviceRepository.savePasswordAdvice(request, response, advice);
+				successHandler.onAuthenticationSuccess(request, response, authentication);
+			});
 	}
 
 	@Override
@@ -94,39 +123,24 @@ public final class PasswordManagementConfigurer<H extends HttpSecurityBuilder<H>
 			this.context.getBeanProvider(ChangePasswordAdviceHandler.class)
 				.getIfUnique(() -> new SimpleChangePasswordAdviceHandler(this.changePasswordUrl));
 
-		ChangePasswordAdviceRepository changePasswordAdviceRepository = (this.changePasswordAdviceRepository != null) ?
-			this.changePasswordAdviceRepository :
-			this.context.getBeanProvider(ChangePasswordAdviceRepository.class)
-				.getIfUnique(HttpSessionChangePasswordAdviceRepository::new);
-
-		ChangePasswordAdvisor changePasswordAdvisor = (this.changePasswordAdvisor != null) ?
-			this.changePasswordAdvisor :
-			this.context.getBeanProvider(ChangePasswordAdvisor.class)
-				.getIfUnique(ChangeCompromisedPasswordAdvisor::new);
-
 		UserDetailsPasswordService passwordService = (this.userDetailsPasswordService == null) ?
 			this.context.getBean(UserDetailsPasswordService.class) : this.userDetailsPasswordService;
 
-		AuthenticationManager authenticationManager = http.getSharedObject(AuthenticationManager.class);
-		PasswordCheckingUsernamePasswordAuthenticationFilter login = new PasswordCheckingUsernamePasswordAuthenticationFilter(authenticationManager);
-		login.setChangePasswordAdviceRepository(changePasswordAdviceRepository);
-		login.setChangePasswordAdvisor(changePasswordAdvisor);
-		http.addFilterBefore(login, UsernamePasswordAuthenticationFilter.class);
-
-		if (this.changePasswordUrl == null) {
+		if (!this.customChangePasswordPage) {
 			DefaultChangePasswordPageGeneratingFilter page = new DefaultChangePasswordPageGeneratingFilter();
 			http.addFilterBefore(page, UsernamePasswordAuthenticationFilter.class);
 		}
 
 		ChangePasswordProcessingFilter processing = new ChangePasswordProcessingFilter(passwordService);
 		processing.setRequestMatcher(PathPatternRequestMatcher.withDefaults().matcher(this.changePasswordProcessingUrl));
-		processing.setChangePasswordAdvisor(changePasswordAdvisor);
-		processing.setChangePasswordAdviceRepository(changePasswordAdviceRepository);
+		processing.setChangePasswordAdvisor(http.getSharedObject(ChangePasswordAdvisor.class));
+		processing.setChangePasswordAdviceRepository(http.getSharedObject(ChangePasswordAdviceRepository.class));
 		processing.setPasswordEncoder(passwordEncoder);
+		processing.setSecurityContextHolderStrategy(getSecurityContextHolderStrategy());
 		http.addFilterBefore(processing, UsernamePasswordAuthenticationFilter.class);
 
 		ChangePasswordAdvisingFilter advising = new ChangePasswordAdvisingFilter();
-		advising.setChangePasswordAdviceRepository(changePasswordAdviceRepository);
+		advising.setChangePasswordAdviceRepository(http.getSharedObject(ChangePasswordAdviceRepository.class));
 		advising.setChangePasswordAdviceHandler(changePasswordAdviceHandler);
 			// TODO: does this prevent logout?
 		http.addFilterBefore(advising, UsernamePasswordAuthenticationFilter.class);

@@ -17,30 +17,32 @@
 package org.example.compromisedpasswordchecker;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.function.Consumer;
 
 public final class DefaultChangePasswordAdvice implements ChangePasswordAdvice {
 
-	private final List<ChangePasswordReason> requireReasons;
-	private final List<ChangePasswordReason> recommendReasons;
+	private final Collection<ChangePasswordReason> requireReasons;
+	private final Collection<ChangePasswordReason> recommendReasons;
 
 	DefaultChangePasswordAdvice() {
 		this(new ArrayList<>(), new ArrayList<>());
 	}
 
-	public DefaultChangePasswordAdvice(List<ChangePasswordReason> requireReasons,
-								List<ChangePasswordReason> recommendReasons) {
+	public DefaultChangePasswordAdvice(Collection<ChangePasswordReason> requireReasons,
+									   Collection<ChangePasswordReason> recommendReasons) {
 		this.requireReasons = List.copyOf(requireReasons);
 		this.recommendReasons = List.copyOf(recommendReasons);
 	}
 
 	@Override
-	public List<ChangePasswordReason> getRequireChangeReasons() {
+	public Collection<ChangePasswordReason> getRequireChangeReasons() {
 		return this.requireReasons;
 	}
 
 	@Override
-	public List<ChangePasswordReason> getChangeReasons() {
+	public Collection<ChangePasswordReason> getChangeReasons() {
 		return this.recommendReasons;
 	}
 
@@ -49,26 +51,20 @@ public final class DefaultChangePasswordAdvice implements ChangePasswordAdvice {
 	}
 
 	public static final class Builder {
-		List<ChangePasswordReason> requireReasons = new ArrayList<>();
-		List<ChangePasswordReason> recommendReasons = new ArrayList<>();
+		Collection<ChangePasswordReason> requireReasons = new ArrayList<>();
+		Collection<ChangePasswordReason> recommendReasons = new ArrayList<>();
 
 		private Builder() {
 
 		}
 
-		public Builder require(ChangePasswordReason reason) {
-			this.requireReasons.add(reason);
+		public Builder require(Consumer<Collection<ChangePasswordReason>> reasons) {
+			reasons.accept(this.requireReasons);
 			return this;
 		}
 
-		public Builder recommend(ChangePasswordReason reason) {
-			this.recommendReasons.add(reason);
-			return this;
-		}
-
-		public Builder advice(ChangePasswordAdvice advice) {
-			this.requireReasons.addAll(advice.getRequireChangeReasons());
-			this.recommendReasons.addAll(advice.getChangeReasons());
+		public Builder recommend(Consumer<Collection<ChangePasswordReason>> reasons) {
+			reasons.accept(this.recommendReasons);
 			return this;
 		}
 

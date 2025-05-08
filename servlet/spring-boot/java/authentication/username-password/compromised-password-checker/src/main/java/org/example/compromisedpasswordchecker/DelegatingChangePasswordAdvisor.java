@@ -31,7 +31,9 @@ public class DelegatingChangePasswordAdvisor implements ChangePasswordAdvisor {
 		for (ChangePasswordAdvisor advisor : this.advisors) {
 			ChangePasswordAdvice advice = advisor.advise(request);
 			if (advice != null) {
-				builder.advice(advice);
+				builder
+					.recommend((r) -> r.addAll(advice.getChangeReasons()))
+					.require((r) -> r.addAll(advice.getRequireChangeReasons()));
 			}
 		}
 		return builder.build();

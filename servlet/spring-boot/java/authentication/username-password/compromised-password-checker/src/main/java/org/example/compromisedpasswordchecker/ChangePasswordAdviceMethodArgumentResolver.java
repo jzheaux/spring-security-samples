@@ -25,7 +25,7 @@ import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 
 public class ChangePasswordAdviceMethodArgumentResolver implements HandlerMethodArgumentResolver {
-	ChangePasswordAdviceRepository advice = new HttpSessionChangePasswordAdviceRepository();
+	ChangePasswordAdviceRepository changePasswordAdviceRepository = new HttpSessionChangePasswordAdviceRepository();
 
 	@Override
 	public boolean supportsParameter(MethodParameter parameter) {
@@ -34,6 +34,10 @@ public class ChangePasswordAdviceMethodArgumentResolver implements HandlerMethod
 
 	@Override
 	public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer, NativeWebRequest webRequest, WebDataBinderFactory binderFactory) throws Exception {
-		return this.advice.loadPasswordAdvice(webRequest.getNativeRequest(HttpServletRequest.class));
+		return this.changePasswordAdviceRepository.loadPasswordAdvice(webRequest.getNativeRequest(HttpServletRequest.class));
+	}
+
+	public void setChangePasswordAdviceRepository(ChangePasswordAdviceRepository changePasswordAdviceRepository) {
+		this.changePasswordAdviceRepository = changePasswordAdviceRepository;
 	}
 }
