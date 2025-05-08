@@ -21,6 +21,7 @@ import java.util.List;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -29,24 +30,12 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.web.method.support.HandlerMethodArgumentResolver;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.security.web.authentication.password.HaveIBeenPwnedRestApiPasswordChecker;
 
 @Configuration(proxyBeanMethods = false)
 @EnableWebSecurity
+@Import(PasswordManagementConfiguration.class)
 public class SecurityConfig {
-
-	@Bean
-	WebMvcConfigurer argumentResolvers(ChangePasswordAdviceRepository changePasswordAdviceRepository) {
-		return new WebMvcConfigurer() {
-			@Override
-			public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
-				ChangePasswordAdviceMethodArgumentResolver resolver = new ChangePasswordAdviceMethodArgumentResolver();
-				resolver.setChangePasswordAdviceRepository(changePasswordAdviceRepository);
-				resolvers.add(resolver);
-			}
-		};
-	}
 
 	@Bean
 	SecurityFilterChain securityFilterChain(HttpSecurity http, ApplicationContext context) throws Exception {
@@ -87,7 +76,9 @@ public class SecurityConfig {
 	@Bean
 	ChangePasswordAdvisor changePasswordAdvisor(UserDetailsService users, ChangePasswordAdviceService passwords) {
 		return new DelegatingChangePasswordAdvisor(List.of(
-			new ChangeCompromisedPasswordAdvisor(),
+			(request) -> new HaveIBeenPwnedRestApiPasswordChecker().check(request.password()).isCompromised() ?
+				ChangePasswordAdvice.require(ChangePasswordReason.COMPROMISED) :
+				ChangePasswordAdvice.keep(),
 			new ChangeRepeatedPasswordAdvisor(users),
 			new ChangeLengthPasswordAdvisor(8, 72),
 			new ChangePasswordServiceAdvisor(passwords)));
