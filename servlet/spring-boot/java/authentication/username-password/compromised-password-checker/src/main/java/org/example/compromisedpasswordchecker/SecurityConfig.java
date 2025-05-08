@@ -18,28 +18,17 @@ package org.example.compromisedpasswordchecker;
 
 import java.util.List;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
-import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsPasswordService;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -47,31 +36,22 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @EnableWebSecurity
 public class SecurityConfig implements WebMvcConfigurer {
 
-	Log logger = LogFactory.getLog(SecurityConfig.class);
-
 	@Override
 	public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
 		resolvers.add(new ChangePasswordAdviceMethodArgumentResolver());
 	}
 
 	@Bean
-	SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectProvider<Customizer<HttpSecurity>> customizers) throws Exception {
+	SecurityFilterChain securityFilterChain(HttpSecurity http, ApplicationContext context) throws Exception {
 		// @formatter:off
 		http
 			.authorizeHttpRequests((authz) -> authz
 				.requestMatchers("/admin/**").hasRole("ADMIN")
 				.anyRequest().authenticated()
 			)
-			.formLogin(Customizer.withDefaults());
-		customizers.forEach((c) -> c.customize(http));
+			.with(new PasswordManagementConfigurer<>(context), Customizer.withDefaults());
 		// @formatter:on
 		return http.build();
-	}
-
-
-	@Bean
-	AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
-		return configuration.getAuthenticationManager();
 	}
 
 	@Bean
@@ -87,50 +67,8 @@ public class SecurityConfig implements WebMvcConfigurer {
 	}
 
 	@Bean
-	Customizer<HttpSecurity> passwordResetFilter(UserDetailsPasswordService passwords, ChangePasswordAdviceService service, ChangePasswordAdvisor advisor) {
-		ChangePasswordProcessingFilter processing = new ChangePasswordProcessingFilter(passwords);
-		processing.setChangePasswordAdvisor(advisor);
-		HttpSessionChangePasswordAdviceRepository session = new HttpSessionChangePasswordAdviceRepository();
-		processing.setChangePasswordAdviceRepository(new ChangePasswordAdviceRepository() {
-			@Override
-			public ChangePasswordAdvice loadPasswordAdvice(HttpServletRequest request) {
-				return session.loadPasswordAdvice(request);
-			}
-
-			@Override
-			public void savePasswordAdvice(HttpServletRequest request, HttpServletResponse response, ChangePasswordAdvice advice) {
-				if (advice.getAction() == ChangePasswordAdvice.Action.KEEP) {
-					removePasswordAdvice(request, response);
-					return;
-				}
-				session.savePasswordAdvice(request, response, advice);
-				Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-				UserDetails user = (UserDetails) authentication.getPrincipal();
-				service.savePasswordAdvice(user, advice);
-			}
-
-			@Override
-			public void removePasswordAdvice(HttpServletRequest request, HttpServletResponse response) {
-				session.removePasswordAdvice(request, response);
-				Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-				UserDetails user = (UserDetails) authentication.getPrincipal();
-				service.removePasswordAdvice(user);
-			}
-		});
-		ChangePasswordAdvisingFilter advising = new ChangePasswordAdvisingFilter();
-		return (http) -> http
-			.addFilterBefore(new DefaultChangePasswordPageGeneratingFilter(), UsernamePasswordAuthenticationFilter.class)
-			.addFilterBefore(processing, UsernamePasswordAuthenticationFilter.class)
-			// TODO: does this prevent logout?
-			.addFilterBefore(advising, UsernamePasswordAuthenticationFilter.class);
-	}
-
-	@Bean
-	Customizer<HttpSecurity> usernamePasswordFilter(AuthenticationManager authenticationManager, ChangePasswordAdvisor advisor) {
-		PasswordCheckingUsernamePasswordAuthenticationFilter filter =
-			new PasswordCheckingUsernamePasswordAuthenticationFilter(authenticationManager);
-		filter.setChangePasswordAdvisor(advisor);
-		return (http) -> http.addFilterAt(filter, UsernamePasswordAuthenticationFilter.class);
+	ChangePasswordAdviceRepository changePasswordAdviceRepository(ChangePasswordAdviceService passwords) {
+		return new ChangePasswordAdviceServiceRepository(passwords);
 	}
 
 	@Bean

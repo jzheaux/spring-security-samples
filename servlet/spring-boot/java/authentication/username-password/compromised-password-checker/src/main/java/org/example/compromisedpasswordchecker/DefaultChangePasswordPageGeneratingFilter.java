@@ -30,7 +30,9 @@ import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 public class DefaultChangePasswordPageGeneratingFilter extends OncePerRequestFilter {
-	private RequestMatcher requestMatcher = PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.GET, "/reset-password");
+	public static final String DEFAULT_CHANGE_PASSWORD_URL = "/change-password";
+
+	private RequestMatcher requestMatcher = PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.GET, DEFAULT_CHANGE_PASSWORD_URL);
 
 	@Override
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain) throws ServletException, IOException {

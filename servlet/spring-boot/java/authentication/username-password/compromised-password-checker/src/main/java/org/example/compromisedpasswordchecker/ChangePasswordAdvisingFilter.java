@@ -26,17 +26,22 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 public class ChangePasswordAdvisingFilter extends OncePerRequestFilter {
-	private final ChangePasswordAdviceHandler resetHandler = new SimpleChangePasswordAdviceHandler();
-	private ChangePasswordAdviceRepository advice = new HttpSessionChangePasswordAdviceRepository();
+	private ChangePasswordAdviceHandler changePasswordAdviceHandler = new SimpleChangePasswordAdviceHandler(
+		DefaultChangePasswordPageGeneratingFilter.DEFAULT_CHANGE_PASSWORD_URL);
+	private ChangePasswordAdviceRepository changePasswordAdviceRepository = new HttpSessionChangePasswordAdviceRepository();
 
 	@Override
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
 		throws ServletException, IOException {
-		ChangePasswordAdvice advice = this.advice.loadPasswordAdvice(request);
-		this.resetHandler.handle(request, response, chain, advice);
+		ChangePasswordAdvice advice = this.changePasswordAdviceRepository.loadPasswordAdvice(request);
+		this.changePasswordAdviceHandler.handle(request, response, chain, advice);
 	}
 
-	public void setChangePasswordAdviceRepository(ChangePasswordAdviceRepository advice) {
-		this.advice = advice;
+	public void setChangePasswordAdviceRepository(ChangePasswordAdviceRepository changePasswordAdviceRepository) {
+		this.changePasswordAdviceRepository = changePasswordAdviceRepository;
+	}
+
+	public void setChangePasswordAdviceHandler(ChangePasswordAdviceHandler changePasswordAdviceHandler) {
+		this.changePasswordAdviceHandler = changePasswordAdviceHandler;
 	}
 }

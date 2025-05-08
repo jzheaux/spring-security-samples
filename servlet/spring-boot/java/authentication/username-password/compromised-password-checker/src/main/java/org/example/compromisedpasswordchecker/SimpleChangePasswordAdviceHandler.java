@@ -32,8 +32,15 @@ import org.springframework.security.web.util.matcher.RequestMatcher;
 
 public class SimpleChangePasswordAdviceHandler implements ChangePasswordAdviceHandler {
 	private final RedirectStrategy redirectStrategy = new DefaultRedirectStrategy();
-	private final RequestCache cache = new NullRequestCache();
+
+	private final String changePasswordUrl;
+
+	private RequestCache requestCache = new NullRequestCache();
 	private RequestMatcher requestMatcher = AnyRequestMatcher.INSTANCE;
+
+	public SimpleChangePasswordAdviceHandler(String changePasswordUrl) {
+		this.changePasswordUrl = changePasswordUrl;
+	}
 
 	@Override
 	public void handle(HttpServletRequest request, HttpServletResponse response, FilterChain chain, ChangePasswordAdvice advice)
@@ -43,10 +50,18 @@ public class SimpleChangePasswordAdviceHandler implements ChangePasswordAdviceHa
 		}
 		// request matcher to decide whether to check
 		if (advice.getAction() == ChangePasswordAdvice.Action.REQUIRE_CHANGE) {
-			this.cache.saveRequest(request, response);
-			this.redirectStrategy.sendRedirect(request, response, "/reset-password");
+			this.requestCache.saveRequest(request, response);
+			this.redirectStrategy.sendRedirect(request, response, this.changePasswordUrl);
 			return;
 		}
 		chain.doFilter(request, response);
+	}
+
+	public void setRequestCache(RequestCache requestCache) {
+		this.requestCache = requestCache;
+	}
+
+	public void setRequestMatcher(RequestMatcher requestMatcher) {
+		this.requestMatcher = requestMatcher;
 	}
 }

@@ -30,8 +30,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 
 public class PasswordCheckingUsernamePasswordAuthenticationFilter extends UsernamePasswordAuthenticationFilter {
-	private ChangePasswordAdvisor checker = new ChangeCompromisedPasswordAdvisor();
-	private ChangePasswordAdviceRepository repository = new HttpSessionChangePasswordAdviceRepository();
+	private ChangePasswordAdvisor changePasswordAdvisor = new ChangeCompromisedPasswordAdvisor();
+	private ChangePasswordAdviceRepository changePasswordAdviceRepository = new HttpSessionChangePasswordAdviceRepository();
 
 	public PasswordCheckingUsernamePasswordAuthenticationFilter(AuthenticationManager authenticationManager) {
 		super(authenticationManager);
@@ -42,12 +42,16 @@ public class PasswordCheckingUsernamePasswordAuthenticationFilter extends Userna
 	protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response, FilterChain chain, Authentication authResult) throws IOException, ServletException {
 		String password = obtainPassword(request);
 		UserDetails user = (UserDetails) authResult.getPrincipal();
-		ChangePasswordAdvice advice = this.checker.adviseCurrentPassword(user, password);
-		this.repository.savePasswordAdvice(request, response, advice);
+		ChangePasswordAdvice advice = this.changePasswordAdvisor.adviseCurrentPassword(user, password);
+		this.changePasswordAdviceRepository.savePasswordAdvice(request, response, advice);
 		super.successfulAuthentication(request, response, chain, authResult);
 	}
 
 	public void setChangePasswordAdvisor(ChangePasswordAdvisor advice) {
-		this.checker = advice;
+		this.changePasswordAdvisor = advice;
+	}
+
+	public void setChangePasswordAdviceRepository(ChangePasswordAdviceRepository changePasswordAdviceRepository) {
+		this.changePasswordAdviceRepository = changePasswordAdviceRepository;
 	}
 }

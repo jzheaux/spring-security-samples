@@ -22,7 +22,6 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.example.compromisedpasswordchecker.ChangePasswordAdvisor.ChangeUpdatedPasswordAdviceRequest;
 
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -37,10 +36,11 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsPasswordService;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.access.HttpStatusAccessDeniedHandler;
 import org.springframework.security.web.access.intercept.RequestAuthorizationContext;
+import org.springframework.security.web.authentication.AuthenticationEntryPointFailureHandler;
+import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.SavedRequestAwareAuthenticationSuccessHandler;
@@ -49,10 +49,9 @@ import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 public class ChangePasswordProcessingFilter extends OncePerRequestFilter {
-	private final RequestMatcher requestMatcher = PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/reset-password");
-	private ChangePasswordAdvisor advisor = new ChangeCompromisedPasswordAdvisor();
-	private final PasswordEncoder encoder = PasswordEncoderFactories.createDelegatingPasswordEncoder();
-	private final AuthenticationEntryPoint entryPoint = new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED);
+	public static final String DEFAULT_PASSWORD_CHANGE_PROCESSING_URL = "/change-password";
+
+	private final AuthenticationFailureHandler failureHandler = new AuthenticationEntryPointFailureHandler(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED));
 	private final AuthorizationManager<RequestAuthorizationContext> authorizationManager =
 		AuthenticatedAuthorizationManager.authenticated();
 	private final AccessDeniedHandler deniedHandler = new HttpStatusAccessDeniedHandler(HttpStatus.FORBIDDEN);
@@ -60,6 +59,9 @@ public class ChangePasswordProcessingFilter extends OncePerRequestFilter {
 
 	private final UserDetailsPasswordService passwords;
 
+	private RequestMatcher requestMatcher = PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, DEFAULT_PASSWORD_CHANGE_PROCESSING_URL);
+	private ChangePasswordAdvisor advisor = new ChangeCompromisedPasswordAdvisor();
+	private PasswordEncoder passwordEncder = PasswordEncoderFactories.createDelegatingPasswordEncoder();
 	private ChangePasswordAdviceRepository repository = new HttpSessionChangePasswordAdviceRepository();
 
 	public ChangePasswordProcessingFilter(UserDetailsPasswordService passwords) {
@@ -80,7 +82,7 @@ public class ChangePasswordProcessingFilter extends OncePerRequestFilter {
 		}
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 		if (authentication == null) {
-			this.entryPoint.commence(request, response, new InsufficientAuthenticationException("Password reset required"));
+			this.failureHandler.onAuthenticationFailure(request, response, new InsufficientAuthenticationException("Authentication required to change password"));
 			return;
 		}
 		AuthorizationResult authorization = this.authorizationManager.authorize(() -> authentication,
@@ -95,10 +97,10 @@ public class ChangePasswordProcessingFilter extends OncePerRequestFilter {
 		}
 		UserDetails user = (UserDetails) authentication.getPrincipal();
 		ChangePasswordAdvice advice = this.advisor.adviseUpdatedPassword(user, password);
-		if (advice.getAction() == ChangePasswordAdvice.Action.KEEP) {
-			this.passwords.updatePassword(user, this.encoder.encode(password));
-		}
 		this.repository.savePasswordAdvice(request, response, advice);
+		if (advice.getAction() == ChangePasswordAdvice.Action.KEEP) {
+			this.passwords.updatePassword(user, this.passwordEncder.encode(password));
+		}
 		this.successHandler.onAuthenticationSuccess(request, response, authentication);
 	}
 
@@ -108,5 +110,13 @@ public class ChangePasswordProcessingFilter extends OncePerRequestFilter {
 
 	public void setChangePasswordAdvisor(ChangePasswordAdvisor advisor) {
 		this.advisor = advisor;
+	}
+
+	public void setRequestMatcher(RequestMatcher requestMatcher) {
+		this.requestMatcher = requestMatcher;
+	}
+
+	public void setPasswordEncoder(PasswordEncoder passwordEncder) {
+		this.passwordEncder = passwordEncder;
 	}
 }
