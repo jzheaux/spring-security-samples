@@ -20,8 +20,10 @@ import java.util.List;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authentication.password.ChangePasswordAdvice;
-import org.springframework.security.authentication.password.ChangePasswordAdvisor;
+import org.springframework.security.authentication.password.CompositePasswordAdvisor;
+import org.springframework.security.authentication.password.PasswordAction;
+import org.springframework.security.authentication.password.PasswordAdvisor;
+import org.springframework.security.authentication.password.UserDetailsPasswordAdvisor;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -29,25 +31,20 @@ import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.password.ChangeCompromisedPasswordAdvisor;
-import org.springframework.security.web.authentication.password.ChangePasswordAdviceMethodArgumentResolver;
-import org.springframework.web.method.support.HandlerMethodArgumentResolver;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.security.web.authentication.password.CompromisedPasswordAdvisor;
 
 @Configuration(proxyBeanMethods = false)
 @EnableWebSecurity
-public class SecurityConfig implements WebMvcConfigurer {
-
-	@Override
-	public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
-		resolvers.add(new ChangePasswordAdviceMethodArgumentResolver());
-	}
+public class SecurityConfig {
 
 	@Bean
 	SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 		// @formatter:off
 		http
-			.authorizeHttpRequests((authz) -> authz.anyRequest().authenticated())
+			.authorizeHttpRequests((authz) -> authz
+				.requestMatchers("/admin/**").hasRole("ADMIN")
+				.anyRequest().authenticated()
+			)
 			.formLogin(Customizer.withDefaults())
 			.passwordManagement(Customizer.withDefaults());
 		// @formatter:on
@@ -56,18 +53,15 @@ public class SecurityConfig implements WebMvcConfigurer {
 
 	@Bean
 	InMemoryUserDetailsManager users() {
-		UserDetails compromised = User.withDefaultPasswordEncoder()
-			.username("compromised")
-			.password("password")
+		UserDetails compromised = User.withUsername("compromised")
+			.password("{bcrypt}$2a$10$Rvyun1VAr1wcAAX6WvB70O2kMSnKkhB.0v/LylIWP6HNO6gKWo7o.") // password
 			.roles("USER")
 			.build();
-		return new InMemoryUserDetailsManager(compromised);
+		UserDetails admin = User.withUsername("admin")
+			.password("{bcrypt}$2a$10$HF4re7jEnlho3Y.XwauUruwomhMcXICPkhB8pXO5CsR66JVDR89Pi")
+			.roles("ADMIN")
+			.build();
+		return new InMemoryUserDetailsManager(compromised, admin);
 	}
 
-	@Bean
-	ChangePasswordAdvisor changePasswordAdvisor() {
-		ChangeCompromisedPasswordAdvisor compromised = new ChangeCompromisedPasswordAdvisor();
-		compromised.setAction(ChangePasswordAdvice.Action.MUST_CHANGE);
-		return compromised;
-	}
 }
