@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 public class HomeController {
 	@GetMapping
 	public String index(PasswordAdvice advice, HttpServletRequest request) {
-		if (advice.getAction().equals(PasswordAction.SHOULD_CHANGE)) {
+		if (PasswordAction.SHOULD_CHANGE.advisedBy(advice)) {
 			request.setAttribute("advice", advice.toString());
 		}
 		return "index";

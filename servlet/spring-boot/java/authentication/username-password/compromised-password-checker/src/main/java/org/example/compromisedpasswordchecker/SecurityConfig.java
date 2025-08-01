@@ -16,14 +16,8 @@
 
 package org.example.compromisedpasswordchecker;
 
-import java.util.List;
-
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authentication.password.CompositePasswordAdvisor;
-import org.springframework.security.authentication.password.PasswordAction;
-import org.springframework.security.authentication.password.PasswordAdvisor;
-import org.springframework.security.authentication.password.UserDetailsPasswordAdvisor;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -31,7 +25,6 @@ import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.password.CompromisedPasswordAdvisor;
 
 @Configuration(proxyBeanMethods = false)
 @EnableWebSecurity
